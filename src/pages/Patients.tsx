@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +31,7 @@ export default function Patients() {
 
     const { data: patients, isLoading } = usePatients();
     const createPatient = useCreatePatient();
+    const navigate = useNavigate();
 
     const filtered = (patients || []).filter(p =>
         `${p.first_name} ${p.last_name} ${p.phone} ${p.email || ''}`.toLowerCase().includes(search.toLowerCase())
@@ -125,7 +127,7 @@ export default function Patients() {
                                 <tr><td colSpan={6} className="px-4 py-8 text-center text-[13px] text-muted-foreground">No patients found</td></tr>
                             ) : (
                                 filtered.map((patient) => (
-                                    <tr key={patient.id} className="border-b border-border/50 last:border-b-0 notion-row-hover">
+                                    <tr key={patient.id} className="border-b border-border/50 last:border-b-0 notion-row-hover cursor-pointer" onClick={() => navigate(`/patients/${patient.id}`)}>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
                                                 <Avatar className="h-7 w-7">

@@ -13,6 +13,8 @@ import Analytics from '@/pages/Analytics';
 import SettingsPage from '@/pages/Settings';
 import VoiceAgent from '@/pages/VoiceAgent';
 import WhatsApp from '@/pages/WhatsApp';
+import PatientForms from '@/pages/PatientForms';
+import PatientDetail from '@/pages/PatientDetail';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -49,12 +51,14 @@ function App() {
                     <Toaster position="bottom-right" richColors />
                     <Routes>
                         <Route path="/login" element={<Login />} />
+                        <Route path="/forms/:token" element={<PatientForms />} />
                         <Route element={<ProtectedRoute />}>
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
                             <Route element={<Layout />}>
                                 <Route path="/dashboard" element={<Dashboard />} />
                                 <Route path="/calendar" element={<CalendarPage />} />
                                 <Route path="/patients" element={<Patients />} />
+                                <Route path="/patients/:id" element={<PatientDetail />} />
                                 <Route path="/practitioners" element={<Practitioners />} />
                                 <Route path="/rooms" element={<Rooms />} />
                                 <Route path="/analytics" element={<Analytics />} />

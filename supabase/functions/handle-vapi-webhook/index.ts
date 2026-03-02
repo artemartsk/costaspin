@@ -222,12 +222,39 @@ Return ONLY valid JSON.`
                         .select('id, name, type')
                         .eq('location_id', locationId)
 
-                    // 6. Build available slots (1-hour granularity)
-                    const slots: Array<{ time: string; practitioner: string; room: string; practitioner_id: string; room_id: string }> = []
+                    // 6. Skill-tag matching (from matching.ts scoring logic)
+                    const CATEGORY_SKILL_MAP: Record<string, string[]> = {
+                        acute_injury: ['acute_injury', 'sports_injury'],
+                        chronic_pain: ['chronic_pain'],
+                        sports_injury: ['sports_injury', 'relaxation'],
+                        post_surgery: ['post_surgery', 'rehab'],
+                        relaxation: ['relaxation'],
+                        chiropractic: ['acute_injury', 'chronic_pain'],
+                        physiotherapy: ['post_surgery', 'chronic_pain'],
+                        massage: ['relaxation', 'sports_injury'],
+                    }
+                    const requiredSkills = CATEGORY_SKILL_MAP[serviceCategory || ''] || []
+
+                    // 7. Build scored slots
+                    const slots: Array<{ time: string; practitioner: string; room: string; practitioner_id: string; room_id: string; score: number }> = []
 
                     for (const schedule of schedules) {
-                        const pract = schedule.practitioner
+                        const pract = (schedule as any).practitioner
                         if (!pract) continue
+
+                        // Skill score (0-1)
+                        const skillTags: string[] = pract.skill_tags || []
+                        const matchingSkills = skillTags.filter((t: string) => requiredSkills.includes(t))
+                        const skillScore = requiredSkills.length > 0
+                            ? matchingSkills.length / requiredSkills.length
+                            : 0.5
+
+                        // Load score (prefer less busy practitioners)
+                        const dayApts = (existingApts || []).filter((a: any) => a.practitioner_id === pract.id)
+                        const maxPerDay = pract.max_patients_per_day || 12
+                        const loadScore = Math.max(0, 1 - dayApts.length / maxPerDay)
+
+                        const totalScore = skillScore * 0.6 + loadScore * 0.4
 
                         const startHour = parseInt(schedule.start_time.split(':')[0])
                         const endHour = parseInt(schedule.end_time.split(':')[0])
@@ -236,16 +263,14 @@ Return ONLY valid JSON.`
                             const slotStart = `${requestedDate}T${String(hour).padStart(2, '0')}:00:00`
                             const slotEnd = `${requestedDate}T${String(hour + 1).padStart(2, '0')}:00:00`
 
-                            // Check if practitioner is free
-                            const busy = (existingApts || []).some(apt =>
+                            const busy = (existingApts || []).some((apt: any) =>
                                 apt.practitioner_id === pract.id &&
                                 new Date(apt.start_time) < new Date(slotEnd) &&
                                 new Date(apt.end_time) > new Date(slotStart)
                             )
 
                             if (!busy) {
-                                // Find matching room
-                                const matchedRoom = (rooms || []).find(r => {
+                                const matchedRoom = (rooms || []).find((r: any) => {
                                     if (pract.profession === 'Chiropractor') return r.type === 'chiropractic'
                                     if (pract.profession === 'Physiotherapist') return r.type === 'physiotherapy'
                                     if (pract.profession === 'Massage Therapist') return r.type === 'massage'
@@ -258,10 +283,14 @@ Return ONLY valid JSON.`
                                     practitioner_id: pract.id,
                                     room: matchedRoom?.name || 'Any available room',
                                     room_id: matchedRoom?.id || '',
+                                    score: totalScore,
                                 })
                             }
                         }
                     }
+
+                    // Sort by score (best match first), then by time
+                    slots.sort((a, b) => b.score - a.score || a.time.localeCompare(b.time))
 
                     // Return top 5 slots
                     const topSlots = slots.slice(0, 5).map(s => ({
