@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Notion-inspired: ultra-clean, light, minimal */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 92%;
+    --input: 0 0% 92%;
+    --ring: 0 0% 9%;
+    --radius: 0.5rem;
+
+    /* Sidebar — slightly off-white like Notion */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 30%;
+    --sidebar-primary: 0 0% 9%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 92%;
+    --sidebar-ring: 0 0% 9%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Notion-style scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(0 0% 85%);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(0 0% 75%);
+  }
+}
+
+@layer utilities {
+  /* Notion text sizes */
+  .text-notion-title {
+    @apply text-[40px] font-bold leading-tight tracking-tight;
+  }
+  .text-notion-h1 {
+    @apply text-[30px] font-semibold leading-tight;
+  }
+  .text-notion-h2 {
+    @apply text-[24px] font-semibold leading-snug;
+  }
+  .text-notion-h3 {
+    @apply text-[20px] font-semibold leading-snug;
+  }
+  .text-notion-body {
+    @apply text-[14px] leading-relaxed;
+  }
+  .text-notion-caption {
+    @apply text-[12px] text-muted-foreground leading-normal;
+  }
+
+  /* Notion-style hover for rows */
+  .notion-row-hover {
+    @apply transition-colors hover:bg-[hsl(0_0%_97%)] cursor-pointer;
+  }
+
+  /* Notion-style page padding */
+  .notion-page {
+    @apply max-w-[900px] mx-auto px-24 py-10;
+  }
+}
