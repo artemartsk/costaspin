@@ -90,6 +90,8 @@ export interface Appointment {
     deposit_paid: boolean
     stripe_session_id: string | null
     clinical_notes: string | null
+    diagnosis: string | null
+    treatment_plan: string | null
     triage_data: Record<string, unknown>
     created_at: string
     // Joined relations for display

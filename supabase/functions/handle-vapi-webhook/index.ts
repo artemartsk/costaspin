@@ -414,6 +414,90 @@ Return ONLY valid JSON.`
                         }).eq('vapi_call_id', callId)
                     }
 
+                    // 9. Create Stripe Checkout Session for deposit
+                    let checkoutUrl = ''
+                    try {
+                        const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')
+                        if (stripeKey && appointment?.id) {
+                            // Get service for deposit amount
+                            const { data: svcData } = await supabase
+                                .from('services').select('name, deposit_amount').eq('id', serviceId).single()
+                            const deposit = svcData?.deposit_amount || 20
+
+                            const checkoutParams = new URLSearchParams({
+                                'mode': 'payment',
+                                'success_url': `${Deno.env.get('SUPABASE_URL')}/functions/v1/stripe-webhook?success=true`,
+                                'cancel_url': 'https://costaspine.com',
+                                'payment_method_types[0]': 'card',
+                                'line_items[0][price_data][currency]': 'eur',
+                                'line_items[0][price_data][unit_amount]': String(Math.round(deposit * 100)),
+                                'line_items[0][price_data][product_data][name]': `Deposit: ${svcData?.name || 'Appointment'}`,
+                                'line_items[0][quantity]': '1',
+                                'metadata[appointment_id]': appointment.id,
+                                'metadata[patient_id]': patientId!,
+                            })
+
+                            const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${stripeKey}`,
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                body: checkoutParams.toString(),
+                            })
+                            const session = await stripeRes.json()
+                            checkoutUrl = session.url || ''
+
+                            if (session.id) {
+                                await supabase.from('appointments').update({
+                                    stripe_session_id: session.id,
+                                }).eq('id', appointment.id)
+                            }
+                        }
+                    } catch (e) {
+                        console.error('[Vapi] Checkout session error:', e)
+                    }
+
+                    // 10. Send WhatsApp confirmation with deposit link
+                    try {
+                        const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')
+                        const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
+                        const fromNumber = Deno.env.get('TWILIO_FROM_NUMBER')
+
+                        if (accountSid && authToken && fromNumber && patientPhone) {
+                            // Get practitioner name for the message
+                            const { data: practData } = await supabase
+                                .from('practitioners').select('first_name, last_name').eq('id', practitionerId!).single()
+                            const practFullName = practData ? `${practData.first_name} ${practData.last_name}` : 'your practitioner'
+
+                            let waMessage = `📅 Booking confirmed at CostaSpine ${locationName}!\n\n`
+                            waMessage += `🕐 ${date} at ${time || '10:00'}\n`
+                            waMessage += `👨‍⚕️ ${practFullName}\n`
+                            waMessage += `💆 ${serviceType}\n`
+
+                            if (checkoutUrl) {
+                                waMessage += `\n💳 Please pay the deposit to secure your slot:\n${checkoutUrl}`
+                            }
+
+                            const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
+                            await fetch(twilioUrl, {
+                                method: 'POST',
+                                headers: {
+                                    Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                body: new URLSearchParams({
+                                    To: `whatsapp:${patientPhone}`,
+                                    From: `whatsapp:${fromNumber}`,
+                                    Body: waMessage,
+                                }).toString(),
+                            })
+                            console.log('[Vapi] WhatsApp confirmation sent to', patientPhone)
+                        }
+                    } catch (e) {
+                        console.error('[Vapi] WhatsApp send error:', e)
+                    }
+
                     return new Response(JSON.stringify({
                         results: {
                             success: true,

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -8,6 +9,8 @@ import {
 } from 'lucide-react';
 import { useDashboardStats, useAppointments, useCallLogs } from '@/hooks/useData';
 import { formatTime } from '@/lib/utils';
+import { AppointmentDetailPanel } from '@/components/AppointmentDetailPanel';
+import type { Appointment } from '@/types';
 
 function getStatusBadge(status: string) {
     switch (status) {
@@ -31,6 +34,7 @@ export default function Dashboard() {
     const { data: stats, isLoading: statsLoading } = useDashboardStats();
     const { data: appointments, isLoading: aptsLoading } = useAppointments(today);
     const { data: callLogs, isLoading: callsLoading } = useCallLogs();
+    const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
 
     const statCards = [
         { label: 'Total Patients', value: stats?.totalPatients ?? '–', icon: Users, change: `${stats?.pendingDeposits ?? 0} pending deposit` },
@@ -93,7 +97,7 @@ export default function Dashboard() {
                                         <tr><td colSpan={5} className="px-4 py-6 text-center text-[13px] text-muted-foreground">No appointments today</td></tr>
                                     ) : (
                                         appointments.map((apt) => (
-                                            <tr key={apt.id} className="border-b border-border/50 last:border-b-0 notion-row-hover">
+                                            <tr key={apt.id} className="border-b border-border/50 last:border-b-0 notion-row-hover cursor-pointer" onClick={() => setSelectedApt(apt)}>
                                                 <td className="px-4 py-2.5 text-[13px] font-mono text-muted-foreground">
                                                     {formatTime(apt.start_time)}
                                                 </td>
@@ -130,7 +134,7 @@ export default function Dashboard() {
                                 callLogs.slice(0, 5).map((call) => (
                                     <div key={call.id} className="flex items-center gap-3 p-3 border border-border/60 rounded-lg notion-row-hover">
                                         <div className={`h-2 w-2 rounded-full shrink-0 ${call.appointment_id ? 'bg-emerald-500' :
-                                                call.status === 'completed' ? 'bg-amber-500' : 'bg-gray-300'
+                                            call.status === 'completed' ? 'bg-amber-500' : 'bg-gray-300'
                                             }`} />
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[13px] font-medium truncate">{call.caller_phone || 'Unknown'}</p>
@@ -148,6 +152,12 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
+            {selectedApt && (
+                <AppointmentDetailPanel
+                    appointment={selectedApt}
+                    onClose={() => setSelectedApt(null)}
+                />
+            )}
         </div>
     );
 }
