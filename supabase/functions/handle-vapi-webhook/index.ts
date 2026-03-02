@@ -1,6 +1,6 @@
 // CostaSpine — Vapi Webhook Handler
 // Supabase Edge Function: handle-vapi-webhook
-// Adapted from Stayte's handle-vapi-webhook (540 lines → clinic domain)
+// Handles: status updates, end-of-call analysis (Gemini), function calls (check_availability, create_booking)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -31,7 +31,6 @@ Deno.serve(async (req: Request) => {
             const callId = call?.id
 
             if (status === 'in-progress') {
-                // Call started — create or update call log
                 await supabase.from('call_logs').upsert({
                     vapi_call_id: callId,
                     caller_phone: call?.customer?.number || null,
@@ -61,7 +60,6 @@ Deno.serve(async (req: Request) => {
 
             console.log('[Vapi] End of call report for:', callId)
 
-            // Analyse transcript with Gemini for triage extraction
             let triageResult: Record<string, unknown> = {}
             let patientData: Record<string, unknown> = {}
 
@@ -106,7 +104,6 @@ Return ONLY valid JSON.`
                     const geminiData = await geminiRes.json()
                     const responseText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
-                    // Extract JSON from response
                     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
                     if (jsonMatch) {
                         const parsed = JSON.parse(jsonMatch[0])
@@ -114,6 +111,7 @@ Return ONLY valid JSON.`
                             category: parsed.category,
                             urgency: parsed.urgency,
                             symptoms: parsed.symptoms,
+                            preferred_location: parsed.preferred_location,
                         }
                         patientData = {
                             name: parsed.patient_name,
@@ -128,7 +126,6 @@ Return ONLY valid JSON.`
                 }
             }
 
-            // Update call log with analysis results
             await supabase.from('call_logs').update({
                 triage_result: triageResult,
                 analysis: patientData,
@@ -137,7 +134,7 @@ Return ONLY valid JSON.`
                 status: 'completed',
             }).eq('vapi_call_id', callId)
 
-            // Auto-create patient if caller phone is provided and not already exists
+            // Auto-create patient if caller phone is provided
             if (callerPhone) {
                 const { data: existingPatient } = await supabase
                     .from('patients')
@@ -148,7 +145,6 @@ Return ONLY valid JSON.`
                 let patientId = existingPatient?.id
 
                 if (!patientId) {
-                    // Create new patient from call data
                     const nameParts = (patientData.name as string || 'New Patient').split(' ')
                     const { data: newPatient } = await supabase.from('patients').insert({
                         first_name: nameParts[0] || 'New',
@@ -162,7 +158,6 @@ Return ONLY valid JSON.`
                     patientId = newPatient?.id
                 }
 
-                // Link patient to call log
                 if (patientId) {
                     await supabase.from('call_logs').update({
                         patient_id: patientId,
@@ -179,63 +174,260 @@ Return ONLY valid JSON.`
 
             console.log('[Vapi] Function call:', functionName, params)
 
+            // ─── CHECK AVAILABILITY (real DB query) ──────
             if (functionName === 'check_availability') {
-                // Return available slots for patient
-                const practitionerType = params?.practitioner_type || 'chiropractic'
-                const date = params?.date || new Date().toISOString().split('T')[0]
+                const requestedDate = params?.date || new Date().toISOString().split('T')[0]
+                const locationName = params?.location || 'Elviria'
+                const serviceCategory = params?.service_type || null
 
-                // Simplified: return mock available slots
-                // In production, this would query the booking engine
-                const slots = [
-                    { time: '10:00', practitioner: 'Dr. James Wilson', room: 'Room 1' },
-                    { time: '14:00', practitioner: 'Dr. Sarah Chen', room: 'Physio Suite' },
-                    { time: '15:30', practitioner: 'Dr. James Wilson', room: 'Room 1' },
-                ]
-
-                return new Response(JSON.stringify({ results: slots }), {
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                })
-            }
-
-            if (functionName === 'create_booking') {
-                // Create appointment from Vapi call
-                const patientName = params?.patient_name
-                const patientPhone = params?.patient_phone
-                const dateTime = params?.date_time
-                const serviceType = params?.service_type
-
-                // Find or create patient
-                let patientId: string | null = null
-                if (patientPhone) {
-                    const { data: existing } = await supabase
-                        .from('patients')
+                try {
+                    // 1. Find location
+                    const { data: location } = await supabase
+                        .from('locations')
                         .select('id')
-                        .eq('phone', patientPhone)
+                        .ilike('name', `%${locationName}%`)
                         .single()
 
-                    if (existing) {
-                        patientId = existing.id
-                    } else {
-                        const nameParts = (patientName || 'New Patient').split(' ')
-                        const { data: newPat } = await supabase.from('patients').insert({
-                            first_name: nameParts[0],
-                            last_name: nameParts.slice(1).join(' ') || 'Patient',
-                            phone: patientPhone,
-                            source: 'ai_phone',
-                        }).select('id').single()
-                        patientId = newPat?.id || null
-                    }
-                }
+                    const locationId = location?.id || '10000000-0000-0000-0000-000000000001'
 
-                return new Response(JSON.stringify({
-                    results: {
-                        success: true,
-                        patient_id: patientId,
-                        message: `Booking created for ${patientName}. They will receive a WhatsApp with the deposit link.`,
+                    // 2. Get day of week (0=Sun, 1=Mon, ...)
+                    const dateParts = requestedDate.split('-')
+                    const dateObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]))
+                    const dayOfWeek = dateObj.getDay()
+
+                    // 3. Get practitioner schedules for that day + location
+                    const { data: schedules } = await supabase
+                        .from('practitioner_schedules')
+                        .select('*, practitioner:practitioners(id, first_name, last_name, profession, skill_tags)')
+                        .eq('location_id', locationId)
+                        .eq('day_of_week', dayOfWeek)
+
+                    if (!schedules?.length) {
+                        return new Response(JSON.stringify({
+                            results: { available: false, message: `No practitioners available on ${requestedDate} at ${locationName}. Would you like to try another day?` }
+                        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
                     }
-                }), {
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                })
+
+                    // 4. Get existing appointments for that date
+                    const { data: existingApts } = await supabase
+                        .from('appointments')
+                        .select('practitioner_id, start_time, end_time')
+                        .gte('start_time', `${requestedDate}T00:00:00`)
+                        .lte('start_time', `${requestedDate}T23:59:59`)
+                        .in('status', ['confirmed', 'pending_deposit'])
+
+                    // 5. Get rooms at location
+                    const { data: rooms } = await supabase
+                        .from('rooms')
+                        .select('id, name, type')
+                        .eq('location_id', locationId)
+
+                    // 6. Build available slots (1-hour granularity)
+                    const slots: Array<{ time: string; practitioner: string; room: string; practitioner_id: string; room_id: string }> = []
+
+                    for (const schedule of schedules) {
+                        const pract = schedule.practitioner
+                        if (!pract) continue
+
+                        const startHour = parseInt(schedule.start_time.split(':')[0])
+                        const endHour = parseInt(schedule.end_time.split(':')[0])
+
+                        for (let hour = startHour; hour < endHour; hour++) {
+                            const slotStart = `${requestedDate}T${String(hour).padStart(2, '0')}:00:00`
+                            const slotEnd = `${requestedDate}T${String(hour + 1).padStart(2, '0')}:00:00`
+
+                            // Check if practitioner is free
+                            const busy = (existingApts || []).some(apt =>
+                                apt.practitioner_id === pract.id &&
+                                new Date(apt.start_time) < new Date(slotEnd) &&
+                                new Date(apt.end_time) > new Date(slotStart)
+                            )
+
+                            if (!busy) {
+                                // Find matching room
+                                const matchedRoom = (rooms || []).find(r => {
+                                    if (pract.profession === 'Chiropractor') return r.type === 'chiropractic'
+                                    if (pract.profession === 'Physiotherapist') return r.type === 'physiotherapy'
+                                    if (pract.profession === 'Massage Therapist') return r.type === 'massage'
+                                    return true
+                                })
+
+                                slots.push({
+                                    time: `${String(hour).padStart(2, '0')}:00`,
+                                    practitioner: `${pract.first_name} ${pract.last_name}`,
+                                    practitioner_id: pract.id,
+                                    room: matchedRoom?.name || 'Any available room',
+                                    room_id: matchedRoom?.id || '',
+                                })
+                            }
+                        }
+                    }
+
+                    // Return top 5 slots
+                    const topSlots = slots.slice(0, 5).map(s => ({
+                        time: s.time,
+                        practitioner: s.practitioner,
+                        room: s.room,
+                    }))
+
+                    return new Response(JSON.stringify({
+                        results: topSlots.length
+                            ? { available: true, slots: topSlots, date: requestedDate, location: locationName }
+                            : { available: false, message: `No available slots on ${requestedDate} at ${locationName}. Would you like to try the next day?` }
+                    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+
+                } catch (e) {
+                    console.error('[Vapi] check_availability error:', e)
+                    return new Response(JSON.stringify({
+                        results: { available: false, message: 'I had trouble checking availability. Let me connect you with our team.' }
+                    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+                }
+            }
+
+            // ─── CREATE BOOKING (real INSERT) ────────────
+            if (functionName === 'create_booking') {
+                const patientName = params?.patient_name
+                const patientPhone = params?.patient_phone
+                const date = params?.date
+                const time = params?.time
+                const serviceType = params?.service_type || 'Initial Consultation'
+                const locationName = params?.location || 'Elviria'
+                const practitionerName = params?.practitioner || null
+
+                try {
+                    // 1. Find or create patient
+                    let patientId: string | null = null
+                    if (patientPhone) {
+                        const { data: existing } = await supabase
+                            .from('patients')
+                            .select('id')
+                            .eq('phone', patientPhone)
+                            .single()
+
+                        if (existing) {
+                            patientId = existing.id
+                        } else {
+                            const nameParts = (patientName || 'New Patient').split(' ')
+                            const { data: newPat } = await supabase.from('patients').insert({
+                                first_name: nameParts[0],
+                                last_name: nameParts.slice(1).join(' ') || 'Patient',
+                                phone: patientPhone,
+                                source: 'ai_phone',
+                            }).select('id').single()
+                            patientId = newPat?.id || null
+                        }
+                    }
+
+                    if (!patientId) {
+                        return new Response(JSON.stringify({
+                            results: { success: false, message: 'I need the patient phone number to create a booking.' }
+                        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+                    }
+
+                    // 2. Find location
+                    const { data: location } = await supabase
+                        .from('locations')
+                        .select('id')
+                        .ilike('name', `%${locationName}%`)
+                        .single()
+                    const locationId = location?.id || '10000000-0000-0000-0000-000000000001'
+
+                    // 3. Find service
+                    const { data: service } = await supabase
+                        .from('services')
+                        .select('id, duration_minutes')
+                        .ilike('name', `%${serviceType}%`)
+                        .limit(1)
+                        .single()
+                    const serviceId = service?.id || '40000000-0000-0000-0000-000000000001'
+                    const durationMin = service?.duration_minutes || 60
+
+                    // 4. Find practitioner (by name or first available)
+                    let practitionerId: string | null = null
+                    let roomId: string | null = null
+
+                    if (practitionerName) {
+                        const { data: pract } = await supabase
+                            .from('practitioners')
+                            .select('id')
+                            .or(`first_name.ilike.%${practitionerName}%,last_name.ilike.%${practitionerName}%`)
+                            .limit(1)
+                            .single()
+                        practitionerId = pract?.id || null
+                    }
+
+                    if (!practitionerId) {
+                        // Get first available practitioner at location
+                        const { data: pl } = await supabase
+                            .from('practitioner_locations')
+                            .select('practitioner_id')
+                            .eq('location_id', locationId)
+                            .limit(1)
+                            .single()
+                        practitionerId = pl?.practitioner_id || '30000000-0000-0000-0000-000000000001'
+                    }
+
+                    // 5. Find a room
+                    const { data: rooms } = await supabase
+                        .from('rooms')
+                        .select('id')
+                        .eq('location_id', locationId)
+                        .limit(1)
+                    roomId = rooms?.[0]?.id || null
+
+                    // 6. Build timestamps
+                    const startTime = `${date}T${time || '10:00'}:00`
+                    const endDate = new Date(startTime)
+                    endDate.setMinutes(endDate.getMinutes() + durationMin)
+                    const endTime = endDate.toISOString()
+
+                    // 7. INSERT appointment
+                    const { data: appointment, error: aptError } = await supabase
+                        .from('appointments')
+                        .insert({
+                            patient_id: patientId,
+                            practitioner_id: practitionerId,
+                            location_id: locationId,
+                            room_id: roomId,
+                            service_id: serviceId,
+                            start_time: startTime,
+                            end_time: endTime,
+                            status: 'pending_deposit',
+                            booking_source: 'ai_phone',
+                            triage_data: {},
+                        })
+                        .select('id')
+                        .single()
+
+                    if (aptError) {
+                        console.error('[Vapi] Appointment insert error:', aptError)
+                        return new Response(JSON.stringify({
+                            results: { success: false, message: 'There was an issue creating the booking. Please try again.' }
+                        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+                    }
+
+                    // 8. Link to call log if we have the vapi call id
+                    const callId = message?.call?.id
+                    if (callId && appointment?.id) {
+                        await supabase.from('call_logs').update({
+                            appointment_id: appointment.id,
+                        }).eq('vapi_call_id', callId)
+                    }
+
+                    return new Response(JSON.stringify({
+                        results: {
+                            success: true,
+                            appointment_id: appointment?.id,
+                            message: `Booking created for ${patientName} on ${date} at ${time || '10:00'}. They will receive a WhatsApp message with the deposit payment link shortly.`,
+                        }
+                    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+
+                } catch (e) {
+                    console.error('[Vapi] create_booking error:', e)
+                    return new Response(JSON.stringify({
+                        results: { success: false, message: 'There was an issue creating the booking. Let me connect you with our team.' }
+                    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+                }
             }
         }
 
