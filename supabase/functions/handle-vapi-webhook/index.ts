@@ -68,7 +68,7 @@ Deno.serve(async (req: Request) => {
             const geminiKey = Deno.env.get('GEMINI_API_KEY')
             if (geminiKey && transcript) {
                 try {
-                    const analysisPrompt = `You are a medical receptionist AI analyzing a phone call transcript between a virtual receptionist and a potential patient at CostaSpine clinic.
+                    const analysisPrompt = `You are a medical receptionist AI analyzing a phone call transcript between a virtual receptionist and a potential patient across CostaSpine's locations (Elviria, Guadalmina, Aloha).
 
 Extract the following data in JSON format:
 {
@@ -76,6 +76,7 @@ Extract the following data in JSON format:
   "symptoms": ["list of symptoms mentioned"],
   "category": "acute_injury | chronic_pain | sports_injury | post_surgery | relaxation",
   "urgency": "immediate | soon | routine",
+  "preferred_location": "Elviria | Guadalmina | Aloha | null",
   "preferred_date": "YYYY-MM-DD or null",
   "preferred_time": "HH:MM or null",
   "language": "en | es",

@@ -1,8 +1,9 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
-import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/Layout';
+import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import CalendarPage from '@/pages/Calendar';
 import Patients from '@/pages/Patients';
@@ -22,6 +23,24 @@ const queryClient = new QueryClient({
     },
 });
 
+function ProtectedRoute() {
+    const { user, loading } = useAuth();
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="h-5 w-5 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
+            </div>
+        );
+    }
+
+    if (!user) {
+        return <Navigate to="/login" replace />;
+    }
+
+    return <Outlet />;
+}
+
 function App() {
     return (
         <QueryClientProvider client={queryClient}>
@@ -29,17 +48,20 @@ function App() {
                 <BrowserRouter>
                     <Toaster position="bottom-right" richColors />
                     <Routes>
-                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                        <Route element={<Layout />}>
-                            <Route path="/dashboard" element={<Dashboard />} />
-                            <Route path="/calendar" element={<CalendarPage />} />
-                            <Route path="/patients" element={<Patients />} />
-                            <Route path="/practitioners" element={<Practitioners />} />
-                            <Route path="/rooms" element={<Rooms />} />
-                            <Route path="/analytics" element={<Analytics />} />
-                            <Route path="/settings" element={<SettingsPage />} />
-                            <Route path="/voice-agent" element={<VoiceAgent />} />
-                            <Route path="/whatsapp" element={<WhatsApp />} />
+                        <Route path="/login" element={<Login />} />
+                        <Route element={<ProtectedRoute />}>
+                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                            <Route element={<Layout />}>
+                                <Route path="/dashboard" element={<Dashboard />} />
+                                <Route path="/calendar" element={<CalendarPage />} />
+                                <Route path="/patients" element={<Patients />} />
+                                <Route path="/practitioners" element={<Practitioners />} />
+                                <Route path="/rooms" element={<Rooms />} />
+                                <Route path="/analytics" element={<Analytics />} />
+                                <Route path="/settings" element={<SettingsPage />} />
+                                <Route path="/voice-agent" element={<VoiceAgent />} />
+                                <Route path="/whatsapp" element={<WhatsApp />} />
+                            </Route>
                         </Route>
                     </Routes>
                 </BrowserRouter>
