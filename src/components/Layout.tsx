@@ -1,40 +1,18 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
-    Calendar,
-    Users,
-    UserCog,
-    DoorOpen,
-    BarChart3,
-    Settings,
     LogOut,
     ChevronLeft,
     ChevronRight,
-    Phone,
-    MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/contexts/AuthContext';
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Calendar', href: '/calendar', icon: Calendar },
-    { name: 'Patients', href: '/patients', icon: Users },
-    { name: 'Practitioners', href: '/practitioners', icon: UserCog },
-    { name: 'Rooms', href: '/rooms', icon: DoorOpen },
-];
-
-const secondaryNav = [
-    { name: 'Voice Agent', href: '/voice-agent', icon: Phone },
-    { name: 'WhatsApp', href: '/whatsapp', icon: MessageSquare },
-];
-
-const bottomNav = [
-    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-    { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
 function SidebarItem({
@@ -76,6 +54,7 @@ function SidebarItem({
 export function Layout() {
     const location = useLocation();
     const [collapsed, setCollapsed] = useState(false);
+    const { signOut } = useAuth();
 
     return (
         <TooltipProvider delayDuration={0}>
@@ -114,49 +93,17 @@ export function Layout() {
                                 );
                             })}
                         </div>
-
-                        <Separator className="mx-0.5" />
-
-                        {/* Integrations */}
-                        <div className="space-y-0.5 py-2">
-                            {!collapsed && (
-                                <p className="px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">
-                                    Integrations
-                                </p>
-                            )}
-                            {secondaryNav.map((item) => {
-                                const isActive = location.pathname.startsWith(item.href);
-                                return (
-                                    <SidebarItem
-                                        key={item.name}
-                                        item={item}
-                                        isActive={isActive}
-                                        collapsed={collapsed}
-                                    />
-                                );
-                            })}
-                        </div>
-
-                        <Separator className="mx-0.5" />
-
-                        {/* Bottom */}
-                        <div className="space-y-0.5 py-2">
-                            {bottomNav.map((item) => {
-                                const isActive = location.pathname.startsWith(item.href);
-                                return (
-                                    <SidebarItem
-                                        key={item.name}
-                                        item={item}
-                                        isActive={isActive}
-                                        collapsed={collapsed}
-                                    />
-                                );
-                            })}
-                        </div>
                     </ScrollArea>
 
-                    {/* Collapse Toggle */}
-                    <div className="border-t border-border p-2">
+                    {/* Bottom */}
+                    <div className="border-t border-border p-2 space-y-0.5">
+                        <button
+                            onClick={() => signOut()}
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[12px] text-muted-foreground hover:bg-accent hover:text-foreground transition-colors w-full"
+                        >
+                            <LogOut className="h-3.5 w-3.5" />
+                            {!collapsed && <span>Sign Out</span>}
+                        </button>
                         <button
                             onClick={() => setCollapsed(!collapsed)}
                             className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[12px] text-muted-foreground hover:bg-accent hover:text-foreground transition-colors w-full"

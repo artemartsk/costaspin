@@ -4,17 +4,7 @@ import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/Layout';
 import Login from '@/pages/Login';
-import Dashboard from '@/pages/Dashboard';
-import CalendarPage from '@/pages/Calendar';
-import Patients from '@/pages/Patients';
-import Practitioners from '@/pages/Practitioners';
-import Rooms from '@/pages/Rooms';
-import Analytics from '@/pages/Analytics';
-import SettingsPage from '@/pages/Settings';
-import VoiceAgent from '@/pages/VoiceAgent';
-import WhatsApp from '@/pages/WhatsApp';
-import PatientForms from '@/pages/PatientForms';
-import PatientDetail from '@/pages/PatientDetail';
+import ComingSoon from '@/pages/ComingSoon';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -51,22 +41,13 @@ function App() {
                     <Toaster position="bottom-right" richColors />
                     <Routes>
                         <Route path="/login" element={<Login />} />
-                        <Route path="/forms/:token" element={<PatientForms />} />
                         <Route element={<ProtectedRoute />}>
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
                             <Route element={<Layout />}>
-                                <Route path="/dashboard" element={<Dashboard />} />
-                                <Route path="/calendar" element={<CalendarPage />} />
-                                <Route path="/patients" element={<Patients />} />
-                                <Route path="/patients/:id" element={<PatientDetail />} />
-                                <Route path="/practitioners" element={<Practitioners />} />
-                                <Route path="/rooms" element={<Rooms />} />
-                                <Route path="/analytics" element={<Analytics />} />
-                                <Route path="/settings" element={<SettingsPage />} />
-                                <Route path="/voice-agent" element={<VoiceAgent />} />
-                                <Route path="/whatsapp" element={<WhatsApp />} />
+                                <Route path="/dashboard" element={<ComingSoon />} />
                             </Route>
                         </Route>
+                        <Route path="*" element={<Navigate to="/dashboard" replace />} />
                     </Routes>
                 </BrowserRouter>
             </AuthProvider>
