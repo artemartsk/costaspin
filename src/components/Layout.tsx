@@ -52,8 +52,8 @@ function SidebarItem({
             className={cn(
                 'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] transition-colors',
                 isActive
-                    ? 'bg-[hsl(0_0%_94%)] text-foreground font-medium'
-                    : 'text-muted-foreground hover:bg-[hsl(0_0%_96%)] hover:text-foreground'
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
             )}
         >
             <item.icon className="h-[16px] w-[16px] shrink-0" />
@@ -83,17 +83,17 @@ export function Layout() {
                 {/* Sidebar */}
                 <aside
                     className={cn(
-                        'h-full flex flex-col border-r border-border bg-[hsl(0_0%_98.5%)] transition-all duration-200',
+                        'h-full flex flex-col border-r border-border bg-[hsl(210_15%_98%)] transition-all duration-200',
                         collapsed ? 'w-[52px]' : 'w-[220px]'
                     )}
                 >
                     {/* Logo */}
-                    <div className={cn('flex items-center h-12 px-3', collapsed ? 'justify-center' : 'gap-2')}>
-                        <div className="h-6 w-6 rounded-md bg-foreground flex items-center justify-center shrink-0">
-                            <span className="text-[10px] font-bold text-background">CS</span>
+                    <div className={cn('flex items-center h-12 px-3', collapsed ? 'justify-center' : 'gap-2.5')}>
+                        <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
+                            <img src="/logo.png" alt="CS" className="h-5 w-5 object-contain" />
                         </div>
                         {!collapsed && (
-                            <span className="text-[13px] font-semibold tracking-tight">CostaSpine</span>
+                            <span className="text-[13px] font-semibold tracking-tight text-foreground">CostaSpine</span>
                         )}
                     </div>
 
