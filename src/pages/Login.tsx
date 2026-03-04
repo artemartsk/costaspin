@@ -14,7 +14,7 @@ export default function Login() {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="h-5 w-5 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
+                <div className="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
             </div>
         );
     }
@@ -37,14 +37,15 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[hsl(0_0%_98.5%)]">
+        <div className="min-h-screen flex items-center justify-center bg-[hsl(210_15%_98%)]">
             <div className="w-full max-w-[340px]">
                 {/* Logo */}
-                <div className="flex items-center gap-2.5 mb-8">
-                    <div className="h-8 w-8 rounded-lg bg-foreground flex items-center justify-center">
-                        <span className="text-[11px] font-bold text-background">CS</span>
+                <div className="flex flex-col items-center mb-8">
+                    <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mb-3">
+                        <img src="/logo.png" alt="CostaSpine" className="h-10 w-10 object-contain" />
                     </div>
-                    <span className="text-[17px] font-semibold tracking-tight">CostaSpine</span>
+                    <span className="text-[18px] font-semibold tracking-tight text-foreground">CostaSpine</span>
+                    <span className="text-[12px] text-muted-foreground mt-0.5">Clinic Management System</span>
                 </div>
 
                 <h1 className="text-[22px] font-semibold tracking-tight mb-1">Welcome back</h1>
@@ -84,7 +85,7 @@ export default function Login() {
                 </form>
 
                 <p className="text-[11px] text-muted-foreground text-center mt-6">
-                    CostaSpine Clinic Management System
+                    CostaSpine · Marbella
                 </p>
             </div>
         </div>
