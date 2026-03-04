@@ -40,12 +40,14 @@ export default function Login() {
         <div className="min-h-screen flex items-center justify-center bg-[hsl(210_15%_98%)]">
             <div className="w-full max-w-[340px]">
                 {/* Logo */}
-                <div className="flex flex-col items-center mb-8">
-                    <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mb-3">
-                        <img src="/logo.png" alt="CostaSpine" className="h-10 w-10 object-contain" />
+                <div className="flex items-center gap-3 mb-8">
+                    <div className="h-11 w-11 rounded-xl bg-primary flex items-center justify-center shrink-0">
+                        <img src="/logo.png" alt="CostaSpine" className="h-8 w-8 object-contain" />
                     </div>
-                    <span className="text-[18px] font-semibold tracking-tight text-foreground">CostaSpine</span>
-                    <span className="text-[12px] text-muted-foreground mt-0.5">Clinic Management System</span>
+                    <div>
+                        <span className="text-[16px] font-semibold tracking-tight text-foreground block">CostaSpine</span>
+                        <span className="text-[11px] text-muted-foreground">Clinic Management System</span>
+                    </div>
                 </div>
 
                 <h1 className="text-[22px] font-semibold tracking-tight mb-1">Welcome back</h1>
@@ -84,7 +86,7 @@ export default function Login() {
                     </Button>
                 </form>
 
-                <p className="text-[11px] text-muted-foreground text-center mt-6">
+                <p className="text-[11px] text-muted-foreground mt-6">
                     CostaSpine · Marbella
                 </p>
             </div>
