@@ -60,7 +60,7 @@ export default function Login() {
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            placeholder="admin@costaspine.com"
+                            placeholder="you@example.com"
                             required
                             className="h-9 text-[13px] bg-background border-border"
                         />
