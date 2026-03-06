@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
     Calendar,
+    CalendarCheck2,
     Users,
     UserCog,
     DoorOpen,
@@ -22,6 +23,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Calendar', href: '/calendar', icon: Calendar },
+    { name: 'My Calendar', href: '/my-calendar', icon: CalendarCheck2 },
     { name: 'Patients', href: '/patients', icon: Users },
     { name: 'Practitioners', href: '/practitioners', icon: UserCog },
     { name: 'Rooms', href: '/rooms', icon: DoorOpen },

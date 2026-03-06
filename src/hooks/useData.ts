@@ -210,3 +210,97 @@ export function useDashboardStats() {
         },
     })
 }
+
+// ─── PRACTITIONER SCHEDULE ───────────────────────
+
+export interface PractScheduleEntry {
+    id?: string
+    practitioner_id: string
+    location_id: string
+    day_of_week: number
+    start_time: string
+    end_time: string
+}
+
+export function useCurrentPractitioner(userId: string | undefined) {
+    return useQuery({
+        queryKey: ['current-practitioner', userId],
+        enabled: !!userId,
+        queryFn: async (): Promise<Practitioner | null> => {
+            if (!isSupabaseConfigured || !userId) return MOCK_PRACTITIONERS[0] || null
+            const { data, error } = await supabase!.from('practitioners').select('*').eq('user_id', userId).single()
+            if (error) return null
+            return data
+        },
+    })
+}
+
+export function usePractitionerSchedules(practitionerId: string | undefined) {
+    return useQuery({
+        queryKey: ['practitioner-schedules', practitionerId],
+        enabled: !!practitionerId,
+        queryFn: async (): Promise<PractScheduleEntry[]> => {
+            if (!isSupabaseConfigured) return []
+            const { data, error } = await supabase!
+                .from('practitioner_schedules')
+                .select('*')
+                .eq('practitioner_id', practitionerId!)
+                .order('day_of_week', { ascending: true })
+            if (error) throw error
+            return data
+        },
+    })
+}
+
+export function useUpsertSchedule() {
+    const qc = useQueryClient()
+    return useMutation({
+        mutationFn: async (entry: PractScheduleEntry) => {
+            if (!isSupabaseConfigured) return entry
+            // Try update by practitioner + day, else insert
+            const { data: existing } = await supabase!
+                .from('practitioner_schedules')
+                .select('id')
+                .eq('practitioner_id', entry.practitioner_id)
+                .eq('day_of_week', entry.day_of_week)
+                .eq('location_id', entry.location_id)
+                .single()
+            if (existing) {
+                const { data, error } = await supabase!
+                    .from('practitioner_schedules')
+                    .update({ start_time: entry.start_time, end_time: entry.end_time })
+                    .eq('id', existing.id)
+                    .select()
+                    .single()
+                if (error) throw error
+                return data
+            } else {
+                const { data, error } = await supabase!
+                    .from('practitioner_schedules')
+                    .insert(entry)
+                    .select()
+                    .single()
+                if (error) throw error
+                return data
+            }
+        },
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['practitioner-schedules'] }),
+    })
+}
+
+export function useDeleteSchedule() {
+    const qc = useQueryClient()
+    return useMutation({
+        mutationFn: async ({ practitionerId, dayOfWeek, locationId }: { practitionerId: string; dayOfWeek: number; locationId: string }) => {
+            if (!isSupabaseConfigured) return
+            const { error } = await supabase!
+                .from('practitioner_schedules')
+                .delete()
+                .eq('practitioner_id', practitionerId)
+                .eq('day_of_week', dayOfWeek)
+                .eq('location_id', locationId)
+            if (error) throw error
+        },
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['practitioner-schedules'] }),
+    })
+}
