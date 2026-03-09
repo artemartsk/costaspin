@@ -48,10 +48,39 @@ export interface Patient {
     date_of_birth: string | null
     language: string
     marketing_consent: boolean
+    medical_data_consent: boolean
+    medical_consent_date: string | null
+    data_processing_consent: boolean
+    data_processing_consent_date: string | null
+    privacy_policy_version: string | null
+    consent_withdrawn_at: string | null
+    anonymized_at: string | null
     source: 'phone' | 'ai_phone' | 'whatsapp' | 'web' | 'referral' | 'walk_in'
     visit_count: number
     forms_completed: boolean
+    form_token?: string
     notes: string | null
+    created_at: string
+}
+
+export type UserRole = 'admin' | 'practitioner' | 'receptionist'
+
+export interface UserRoleRecord {
+    user_id: string
+    role: UserRole
+    created_at: string
+}
+
+export interface AuditLogEntry {
+    id: string
+    user_id: string | null
+    user_email: string | null
+    action: 'view' | 'create' | 'update' | 'delete' | 'export' | 'login' | 'logout'
+    table_name: string
+    record_id: string | null
+    old_data: Record<string, unknown> | null
+    new_data: Record<string, unknown> | null
+    ip_address: string | null
     created_at: string
 }
 

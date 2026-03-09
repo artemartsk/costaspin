@@ -16,6 +16,7 @@ import WhatsApp from '@/pages/WhatsApp';
 import PatientForms from '@/pages/PatientForms';
 import PatientDetail from '@/pages/PatientDetail';
 import MyCalendar from '@/pages/MyCalendar';
+import PrivacyPolicy from '@/pages/PrivacyPolicy';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -53,6 +54,7 @@ function App() {
                     <Routes>
                         <Route path="/login" element={<Login />} />
                         <Route path="/forms/:token" element={<PatientForms />} />
+                        <Route path="/privacy" element={<PrivacyPolicy />} />
                         <Route element={<ProtectedRoute />}>
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
                             <Route element={<Layout />}>

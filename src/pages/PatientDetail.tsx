@@ -23,7 +23,7 @@ export default function PatientDetail() {
     const past = appointments.filter(a => new Date(a.start_time) <= new Date() || a.status === 'cancelled');
 
     const formsUrl = patient?.form_token
-        ? `${window.location.origin}/forms/${(patient as any).form_token}`
+        ? `${window.location.origin}/forms/${patient.form_token}`
         : null;
 
     const copyFormsLink = () => {

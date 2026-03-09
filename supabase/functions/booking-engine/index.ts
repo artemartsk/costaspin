@@ -358,6 +358,20 @@ async function createBooking(
         }
     }
 
+    // 5b. GDPR consent check — verify patient has given medical data consent
+    if (resolvedPatientId) {
+        const { data: patientData } = await supabase
+            .from('patients')
+            .select('medical_data_consent, data_processing_consent')
+            .eq('id', resolvedPatientId)
+            .single()
+
+        if (patientData && !patientData.medical_data_consent) {
+            console.warn(`[Booking] Patient ${resolvedPatientId} has not given medical data consent`)
+            // Don't block booking, but flag it — consent can be collected at appointment
+        }
+    }
+
     // 6. Resolve location
     let resolvedLocationId = location_id
     if (!resolvedLocationId) {
