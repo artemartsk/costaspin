@@ -58,6 +58,76 @@ export function usePractitioners() {
     })
 }
 
+export function useUpdatePractitioner() {
+    const qc = useQueryClient()
+    return useMutation({
+        mutationFn: async ({ id, ...updates }: Partial<Practitioner> & { id: string }) => {
+            if (!isSupabaseConfigured) {
+                const idx = MOCK_PRACTITIONERS.findIndex(p => p.id === id)
+                if (idx >= 0) Object.assign(MOCK_PRACTITIONERS[idx], updates)
+                return MOCK_PRACTITIONERS[idx]
+            }
+            const { data, error } = await supabase!.from('practitioners').update(updates).eq('id', id).select().single()
+            if (error) throw error
+            return data
+        },
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['practitioners'] }),
+    })
+}
+
+export function useCreatePractitionerAccount() {
+    const qc = useQueryClient()
+    return useMutation({
+        mutationFn: async (params: {
+            email: string
+            password?: string
+            first_name: string
+            last_name: string
+            profession: string
+            phone?: string
+            sub_specialties?: string[]
+            skill_tags?: string[]
+            max_patients_per_day?: number
+        }) => {
+            if (!isSupabaseConfigured) {
+                const newPract = {
+                    ...params,
+                    id: `pract-${Date.now()}`,
+                    user_id: null,
+                    avatar_url: null,
+                    is_active: true,
+                    sub_specialties: params.sub_specialties || [],
+                    skill_tags: params.skill_tags || [],
+                    max_patients_per_day: params.max_patients_per_day || 12,
+                    created_at: new Date().toISOString(),
+                } as unknown as Practitioner
+                MOCK_PRACTITIONERS.push(newPract)
+                return {
+                    practitioner: newPract,
+                    credentials: { email: params.email, password: 'demo123' },
+                }
+            }
+            // Call Edge Function which creates auth user + practitioner + role
+            const { data: { session } } = await supabase!.auth.getSession()
+            const res = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-practitioner`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${session?.access_token}`,
+                    },
+                    body: JSON.stringify(params),
+                }
+            )
+            const result = await res.json()
+            if (!res.ok) throw new Error(result.error || 'Failed to create practitioner')
+            return result
+        },
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['practitioners'] }),
+    })
+}
+
 // ─── ROOMS ───────────────────────────────────────
 
 export function useRooms() {
