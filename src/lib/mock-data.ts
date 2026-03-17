@@ -2,7 +2,7 @@
 // Provides realistic demo data matching the seed SQL
 
 import type {
-    Location, Room, Practitioner, Patient, Service,
+    Location, Room, RoomMaintenanceLog, Practitioner, Patient, Service,
     Appointment, CallLog, Payment, Reminder
 } from '@/types'
 
@@ -20,9 +20,19 @@ export const MOCK_LOCATION: Location = {
 }
 
 export const MOCK_ROOMS: Room[] = [
-    { id: '20000000-0000-0000-0000-000000000001', location_id: MOCK_LOCATION.id, name: 'Room 1', type: 'chiropractic', equipment: ['Adjustment table', 'Decompression unit'], status: 'available', created_at: new Date().toISOString() },
-    { id: '20000000-0000-0000-0000-000000000002', location_id: MOCK_LOCATION.id, name: 'Room 2', type: 'massage', equipment: ['Massage table', 'Hot stones kit', 'Aromatherapy'], status: 'occupied', created_at: new Date().toISOString() },
-    { id: '20000000-0000-0000-0000-000000000003', location_id: MOCK_LOCATION.id, name: 'Physio Suite', type: 'physiotherapy', equipment: ['Ultrasound', 'TENS', 'Exercise area', 'Resistance bands'], status: 'occupied', created_at: new Date().toISOString() },
+    { id: '20000000-0000-0000-0000-000000000001', location_id: MOCK_LOCATION.id, name: 'Room 1', type: 'chiropractic', equipment: ['Adjustment table', 'Decompression unit'], capacity: 1, status: 'available', created_at: new Date().toISOString() },
+    { id: '20000000-0000-0000-0000-000000000002', location_id: MOCK_LOCATION.id, name: 'Room 2', type: 'massage', equipment: ['Massage table', 'Hot stones kit', 'Aromatherapy'], capacity: 1, status: 'occupied', created_at: new Date().toISOString() },
+    { id: '20000000-0000-0000-0000-000000000003', location_id: MOCK_LOCATION.id, name: 'Physio Suite', type: 'physiotherapy', equipment: ['Ultrasound', 'TENS', 'Exercise area', 'Resistance bands'], capacity: 2, status: 'occupied', created_at: new Date().toISOString() },
+]
+
+export const MOCK_ROOM_MAINTENANCE_LOGS: RoomMaintenanceLog[] = [
+    { id: 'ml1', room_id: '20000000-0000-0000-0000-000000000001', note: 'Adjustment table hydraulics serviced', reported_by: 'BioMed', resolved: true, created_at: '2026-03-15T10:00:00Z' },
+    { id: 'ml2', room_id: '20000000-0000-0000-0000-000000000001', note: 'Decompression unit annual calibration', reported_by: 'BioMed', resolved: true, created_at: '2026-03-10T14:00:00Z' },
+    { id: 'ml3', room_id: '20000000-0000-0000-0000-000000000002', note: 'Massage table re-padded, new upholstery installed', reported_by: 'Facilities', resolved: true, created_at: '2026-03-15T09:00:00Z' },
+    { id: 'ml4', room_id: '20000000-0000-0000-0000-000000000002', note: 'Hot stones kit replaced — old stones cracked', reported_by: 'Staff', resolved: true, created_at: '2026-03-08T11:00:00Z' },
+    { id: 'ml5', room_id: '20000000-0000-0000-0000-000000000003', note: 'TENS unit calibration completed, all electrodes replaced', reported_by: 'BioMed', resolved: true, created_at: '2026-03-10T15:00:00Z' },
+    { id: 'ml6', room_id: '20000000-0000-0000-0000-000000000003', note: 'Deep clean & sanitization after maintenance window', reported_by: 'Cleaning Team', resolved: true, created_at: '2026-03-03T08:00:00Z' },
+    { id: 'ml7', room_id: '20000000-0000-0000-0000-000000000003', note: 'Resistance bands worn — need replacement', reported_by: 'Dr. Chen', resolved: false, created_at: '2026-03-16T16:00:00Z' },
 ]
 
 export const MOCK_PRACTITIONERS: Practitioner[] = [

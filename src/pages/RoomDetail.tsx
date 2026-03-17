@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useRooms, useAppointments, usePractitioners, useServices } from '@/hooks/useData';
+import { useRoom, useRoomAppointments, useRoomMaintenanceLogs, useRoomSupportedServices, usePractitioners, useServices } from '@/hooks/useData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -73,40 +73,18 @@ const TREATMENTS_MAP: Record<string, string[]> = {
     general: ['General Consultation'],
 };
 
-/* ─── maintenance notes mock ─────────────── */
-
-const MOCK_HISTORY: { date: string; time: string; practitioner: string; service: string; status: 'completed' | 'no_show' | 'cancelled' }[] = [
-    { date: '14 Mar', time: '09:00', practitioner: 'Dr. Wilson', service: 'Chiropractic Adjustment', status: 'completed' },
-    { date: '14 Mar', time: '10:30', practitioner: 'Dr. Wilson', service: 'Initial Consultation', status: 'completed' },
-    { date: '13 Mar', time: '09:00', practitioner: 'Dr. Wilson', service: 'Chiropractic Adjustment', status: 'no_show' },
-    { date: '13 Mar', time: '11:00', practitioner: 'Dr. Chen', service: 'Physiotherapy Session', status: 'completed' },
-    { date: '12 Mar', time: '14:00', practitioner: 'Dr. Thompson', service: 'Sports Massage', status: 'completed' },
-    { date: '12 Mar', time: '09:30', practitioner: 'Dr. Wilson', service: 'Chiropractic Adjustment', status: 'cancelled' },
-    { date: '11 Mar', time: '10:00', practitioner: 'Dr. Chen', service: 'Post-Surgery Rehab', status: 'completed' },
-];
-
-const MOCK_MAINTENANCE: { date: string; note: string; by: string }[] = [
-    { date: '2026-03-15', note: 'Massage table re-padded, new upholstery installed', by: 'Facilities' },
-    { date: '2026-03-10', note: 'TENS unit calibration completed, all electrodes replaced', by: 'BioMed' },
-    { date: '2026-03-03', note: 'Deep clean & sanitization after maintenance window', by: 'Cleaning Team' },
-];
-
 /* ─── PAGE ────────────────────────────────── */
 
 export default function RoomDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { data: rooms } = useRooms();
-    const { data: appointments } = useAppointments();
+    const { data: room } = useRoom(id);
+    const { data: roomAppointments = [] } = useRoomAppointments(id, 'today');
+    const { data: maintenanceLogs = [] } = useRoomMaintenanceLogs(id);
+    const { data: supportedServices = [] } = useRoomSupportedServices(id);
     const { data: practitioners } = usePractitioners();
     const { data: services } = useServices();
     const [activeTab, setActiveTab] = useState<'bookings' | 'maintenance'>('bookings');
-
-    const room = rooms?.find(r => r.id === id);
-    const roomAppointments = useMemo(
-        () => (appointments || []).filter(a => a.room_id === id).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()),
-        [appointments, id]
-    );
 
     // Analytics derived
     const analytics = useMemo(() => {
@@ -146,7 +124,9 @@ export default function RoomDetail() {
         );
     }
 
-    const treatments = TREATMENTS_MAP[room.type] || TREATMENTS_MAP.general;
+    const treatments = supportedServices.length > 0
+        ? supportedServices.map(s => s.name)
+        : (TREATMENTS_MAP[room.type] || TREATMENTS_MAP.general);
 
     return (
         <div className="min-h-screen">
@@ -278,31 +258,44 @@ export default function RoomDetail() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {MOCK_HISTORY.map((entry, i) => (
-                                            <tr key={i} className="border-b border-border last:border-0 notion-row-hover">
-                                                <td className="px-3 py-2.5">
-                                                    <span className="font-medium">{entry.date}</span>
-                                                    <span className="text-muted-foreground ml-1.5">{entry.time}</span>
-                                                </td>
-                                                <td className="px-3 py-2.5">{entry.practitioner}</td>
-                                                <td className="px-3 py-2.5 text-muted-foreground">{entry.service}</td>
-                                                <td className="px-3 py-2.5">{appointmentStatusBadge(entry.status)}</td>
+                                        {roomAppointments.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">No booking history</td>
                                             </tr>
-                                        ))}
+                                        ) : (
+                                            roomAppointments.map(apt => {
+                                                const pract = practitioners?.find(p => p.id === apt.practitioner_id);
+                                                const svc = services?.find(s => s.id === apt.service_id);
+                                                return (
+                                                    <tr key={apt.id} className="border-b border-border last:border-0 notion-row-hover">
+                                                        <td className="px-3 py-2.5">
+                                                            <span className="font-medium">{fmtDate(apt.start_time)}</span>
+                                                            <span className="text-muted-foreground ml-1.5">{fmtTime(apt.start_time)}</span>
+                                                        </td>
+                                                        <td className="px-3 py-2.5">Dr. {pract?.last_name || '—'}</td>
+                                                        <td className="px-3 py-2.5 text-muted-foreground">{svc?.name || '—'}</td>
+                                                        <td className="px-3 py-2.5">{appointmentStatusBadge(apt.status)}</td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {MOCK_MAINTENANCE.map((entry, i) => (
-                                    <div key={i} className="flex gap-3 px-3 py-2.5 rounded-lg border border-border">
+                                {maintenanceLogs.map((entry) => (
+                                    <div key={entry.id} className="flex gap-3 px-3 py-2.5 rounded-lg border border-border">
                                         <div className="h-7 w-7 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
                                             <Wrench className="h-3.5 w-3.5 text-amber-600" />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[12px] font-medium">{entry.note}</p>
-                                            <p className="text-[11px] text-muted-foreground mt-0.5">{entry.date} · {entry.by}</p>
+                                            <p className="text-[11px] text-muted-foreground mt-0.5">{fmtDate(entry.created_at)} · {entry.reported_by}</p>
                                         </div>
+                                        {!entry.resolved && (
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 shrink-0 self-start">Open</span>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -349,7 +342,7 @@ export default function RoomDetail() {
                             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Capacity</p>
                             <div className="flex items-center gap-2 text-[12px]">
                                 <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                                {room.type === 'physiotherapy' ? '2 patients (concurrent)' : '1 patient'}
+                                {room.capacity > 1 ? `${room.capacity} patients (concurrent)` : '1 patient'}
                             </div>
                         </div>
                     </div>

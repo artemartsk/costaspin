@@ -19,8 +19,24 @@ export interface Room {
     name: string
     type: 'chiropractic' | 'physiotherapy' | 'massage' | 'general'
     equipment: string[]
+    capacity: number
     status: 'available' | 'occupied' | 'maintenance'
     created_at: string
+}
+
+export interface RoomMaintenanceLog {
+    id: string
+    room_id: string
+    note: string
+    reported_by: string
+    resolved: boolean
+    created_at: string
+}
+
+export interface RoomSupportedService {
+    room_id: string
+    service_id: string
+    service?: Service
 }
 
 export interface Practitioner {
