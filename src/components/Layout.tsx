@@ -2,6 +2,8 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
     DoorOpen,
+    UserCog,
+    Settings,
     LogOut,
     ChevronLeft,
     ChevronRight,
@@ -10,11 +12,17 @@ import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Practitioners', href: '/practitioners', icon: UserCog },
     { name: 'Rooms', href: '/rooms', icon: DoorOpen },
+];
+
+const bottomNav = [
+    { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
 function SidebarItem({
@@ -85,6 +93,22 @@ export function Layout() {
                                 const isActive =
                                     location.pathname === item.href ||
                                     (item.href !== '/' && location.pathname.startsWith(item.href));
+                                return (
+                                    <SidebarItem
+                                        key={item.name}
+                                        item={item}
+                                        isActive={isActive}
+                                        collapsed={collapsed}
+                                    />
+                                );
+                            })}
+                        </div>
+
+                        <Separator className="mx-0.5" />
+
+                        <div className="space-y-0.5 py-2">
+                            {bottomNav.map((item) => {
+                                const isActive = location.pathname.startsWith(item.href);
                                 return (
                                     <SidebarItem
                                         key={item.name}

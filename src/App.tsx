@@ -6,6 +6,8 @@ import { Layout } from '@/components/Layout';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Rooms from '@/pages/Rooms';
+import Practitioners from '@/pages/Practitioners';
+import SettingsPage from '@/pages/Settings';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -47,6 +49,8 @@ function App() {
                             <Route element={<Layout />}>
                                 <Route path="/dashboard" element={<Dashboard />} />
                                 <Route path="/rooms" element={<Rooms />} />
+                                <Route path="/practitioners" element={<Practitioners />} />
+                                <Route path="/settings" element={<SettingsPage />} />
                             </Route>
                         </Route>
                         <Route path="*" element={<Navigate to="/dashboard" replace />} />
