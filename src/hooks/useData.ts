@@ -10,8 +10,9 @@ import {
     MOCK_APPOINTMENTS,
     MOCK_CALL_LOGS,
     MOCK_LOCATION,
+    MOCK_ROOM_MAINTENANCE_LOGS,
 } from '@/lib/mock-data'
-import type { Patient, Practitioner, Room, Service, Appointment, CallLog } from '@/types'
+import type { Patient, Practitioner, Room, RoomMaintenanceLog, Service, Appointment, CallLog } from '@/types'
 
 // ─── PATIENTS ────────────────────────────────────
 
@@ -139,6 +140,132 @@ export function useRooms() {
             if (error) throw error
             return data
         },
+    })
+}
+
+// ─── ROOM DETAIL ─────────────────────────────────
+
+export function useRoom(id: string | undefined) {
+    const { data: rooms } = useRooms()
+    return useQuery({
+        queryKey: ['room', id],
+        enabled: !!id,
+        queryFn: async (): Promise<Room | null> => {
+            if (!isSupabaseConfigured) return MOCK_ROOMS.find(r => r.id === id) || null
+            const { data, error } = await supabase!.from('rooms').select('*').eq('id', id!).single()
+            if (error) return null
+            return data
+        },
+        initialData: () => rooms?.find(r => r.id === id) ?? undefined,
+    })
+}
+
+export function useRoomAppointments(roomId: string | undefined, range: 'today' | 'past' = 'today') {
+    return useQuery({
+        queryKey: ['room-appointments', roomId, range],
+        enabled: !!roomId,
+        queryFn: async (): Promise<Appointment[]> => {
+            if (!isSupabaseConfigured) {
+                const apts = MOCK_APPOINTMENTS.filter(a => a.room_id === roomId)
+                // For 'past', return all; for 'today', filter by today
+                return apts.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+            }
+            const today = new Date().toISOString().split('T')[0]
+            let query = supabase!
+                .from('appointments')
+                .select('*, patient:patients(*), practitioner:practitioners(*), service:services(*)')
+                .eq('room_id', roomId!)
+                .order('start_time', { ascending: range === 'today' })
+
+            if (range === 'today') {
+                query = query.gte('start_time', `${today}T00:00:00`).lte('start_time', `${today}T23:59:59`)
+            } else {
+                query = query.lt('start_time', `${today}T00:00:00`).limit(20)
+            }
+
+            const { data, error } = await query
+            if (error) throw error
+            return data
+        },
+    })
+}
+
+export function useRoomMaintenanceLogs(roomId: string | undefined) {
+    return useQuery({
+        queryKey: ['room-maintenance', roomId],
+        enabled: !!roomId,
+        queryFn: async (): Promise<RoomMaintenanceLog[]> => {
+            if (!isSupabaseConfigured) {
+                return MOCK_ROOM_MAINTENANCE_LOGS.filter(l => l.room_id === roomId)
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            }
+            const { data, error } = await supabase!
+                .from('room_maintenance_logs')
+                .select('*')
+                .eq('room_id', roomId!)
+                .order('created_at', { ascending: false })
+                .limit(20)
+            if (error) throw error
+            return data
+        },
+    })
+}
+
+export function useRoomSupportedServices(roomId: string | undefined) {
+    return useQuery({
+        queryKey: ['room-services', roomId],
+        enabled: !!roomId,
+        queryFn: async (): Promise<Service[]> => {
+            if (!isSupabaseConfigured) {
+                // Derive from room type
+                const room = MOCK_ROOMS.find(r => r.id === roomId)
+                if (!room) return []
+                return MOCK_SERVICES.filter(s => s.room_type === room.type || s.category === 'assessment')
+            }
+            const { data, error } = await supabase!
+                .from('room_supported_services')
+                .select('service:services(*)')
+                .eq('room_id', roomId!)
+            if (error) throw error
+            return (data || []).map((d: any) => d.service).filter(Boolean)
+        },
+    })
+}
+
+export function useUpdateRoomStatus() {
+    const qc = useQueryClient()
+    return useMutation({
+        mutationFn: async ({ id, status }: { id: string; status: Room['status'] }) => {
+            if (!isSupabaseConfigured) {
+                const idx = MOCK_ROOMS.findIndex(r => r.id === id)
+                if (idx >= 0) MOCK_ROOMS[idx].status = status
+                return MOCK_ROOMS[idx]
+            }
+            const { data, error } = await supabase!.from('rooms').update({ status }).eq('id', id).select().single()
+            if (error) throw error
+            return data
+        },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['rooms'] })
+            qc.invalidateQueries({ queryKey: ['room'] })
+        },
+    })
+}
+
+export function useAddMaintenanceLog() {
+    const qc = useQueryClient()
+    return useMutation({
+        mutationFn: async (log: { room_id: string; note: string; reported_by: string }) => {
+            if (!isSupabaseConfigured) {
+                const newLog: RoomMaintenanceLog = { ...log, id: `ml${Date.now()}`, resolved: false, created_at: new Date().toISOString() }
+                MOCK_ROOM_MAINTENANCE_LOGS.unshift(newLog)
+                return newLog
+            }
+            const { data, error } = await supabase!.from('room_maintenance_logs').insert(log).select().single()
+            if (error) throw error
+            return data
+        },
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['room-maintenance'] }),
     })
 }
 
