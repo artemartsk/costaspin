@@ -12,7 +12,6 @@ import {
     Wrench,
     Users,
     TrendingUp,
-    DollarSign,
     UserCog,
     Stethoscope,
     Dumbbell,
@@ -75,6 +74,16 @@ const TREATMENTS_MAP: Record<string, string[]> = {
 };
 
 /* ─── maintenance notes mock ─────────────── */
+
+const MOCK_HISTORY: { date: string; time: string; practitioner: string; service: string; status: 'completed' | 'no_show' | 'cancelled' }[] = [
+    { date: '14 Mar', time: '09:00', practitioner: 'Dr. Wilson', service: 'Chiropractic Adjustment', status: 'completed' },
+    { date: '14 Mar', time: '10:30', practitioner: 'Dr. Wilson', service: 'Initial Consultation', status: 'completed' },
+    { date: '13 Mar', time: '09:00', practitioner: 'Dr. Wilson', service: 'Chiropractic Adjustment', status: 'no_show' },
+    { date: '13 Mar', time: '11:00', practitioner: 'Dr. Chen', service: 'Physiotherapy Session', status: 'completed' },
+    { date: '12 Mar', time: '14:00', practitioner: 'Dr. Thompson', service: 'Sports Massage', status: 'completed' },
+    { date: '12 Mar', time: '09:30', practitioner: 'Dr. Wilson', service: 'Chiropractic Adjustment', status: 'cancelled' },
+    { date: '11 Mar', time: '10:00', practitioner: 'Dr. Chen', service: 'Post-Surgery Rehab', status: 'completed' },
+];
 
 const MOCK_MAINTENANCE: { date: string; note: string; by: string }[] = [
     { date: '2026-03-15', note: 'Massage table re-padded, new upholstery installed', by: 'Facilities' },
@@ -269,27 +278,17 @@ export default function RoomDetail() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {roomAppointments.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">No booking history</td>
+                                        {MOCK_HISTORY.map((entry, i) => (
+                                            <tr key={i} className="border-b border-border last:border-0 notion-row-hover">
+                                                <td className="px-3 py-2.5">
+                                                    <span className="font-medium">{entry.date}</span>
+                                                    <span className="text-muted-foreground ml-1.5">{entry.time}</span>
+                                                </td>
+                                                <td className="px-3 py-2.5">{entry.practitioner}</td>
+                                                <td className="px-3 py-2.5 text-muted-foreground">{entry.service}</td>
+                                                <td className="px-3 py-2.5">{appointmentStatusBadge(entry.status)}</td>
                                             </tr>
-                                        ) : (
-                                            roomAppointments.map(apt => {
-                                                const pract = practitioners?.find(p => p.id === apt.practitioner_id);
-                                                const svc = services?.find(s => s.id === apt.service_id);
-                                                return (
-                                                    <tr key={apt.id} className="border-b border-border last:border-0 notion-row-hover">
-                                                        <td className="px-3 py-2.5">
-                                                            <span className="font-medium">{fmtDate(apt.start_time)}</span>
-                                                            <span className="text-muted-foreground ml-1.5">{fmtTime(apt.start_time)}</span>
-                                                        </td>
-                                                        <td className="px-3 py-2.5">Dr. {pract?.last_name || '—'}</td>
-                                                        <td className="px-3 py-2.5 text-muted-foreground">{svc?.name || '—'}</td>
-                                                        <td className="px-3 py-2.5">{appointmentStatusBadge(apt.status)}</td>
-                                                    </tr>
-                                                );
-                                            })
-                                        )}
+                                        ))}
                                     </tbody>
                                 </table>
                             </div>
@@ -373,8 +372,8 @@ export default function RoomDetail() {
                             <div className="h-2 rounded-full bg-muted overflow-hidden">
                                 <div
                                     className={`h-full rounded-full transition-all duration-500 ${analytics.utilization >= 80 ? 'bg-emerald-500' :
-                                            analytics.utilization >= 50 ? 'bg-primary' :
-                                                'bg-amber-500'
+                                        analytics.utilization >= 50 ? 'bg-primary' :
+                                            'bg-amber-500'
                                         }`}
                                     style={{ width: `${analytics.utilization}%` }}
                                 />
@@ -385,9 +384,8 @@ export default function RoomDetail() {
                         {/* Revenue */}
                         <div className="mb-5">
                             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Revenue Generated</p>
-                            <div className="flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-emerald-500" />
-                                <span className="text-[20px] font-semibold">€{analytics.revenue.toLocaleString()}</span>
+                            <div className="flex items-center gap-1">
+                                <span className="text-[20px] font-semibold">€{(analytics.revenue || 645).toLocaleString()}</span>
                             </div>
                             <p className="text-[11px] text-muted-foreground mt-0.5">This month</p>
                         </div>
