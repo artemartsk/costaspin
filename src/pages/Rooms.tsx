@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useRooms } from '@/hooks/useData';
+import { useNavigate } from 'react-router-dom';
 
 function getStatusDisplay(status: string) {
     switch (status) {
@@ -14,6 +15,7 @@ function getStatusDisplay(status: string) {
 
 export default function Rooms() {
     const { data: rooms, isLoading } = useRooms();
+    const navigate = useNavigate();
 
     return (
         <div className="min-h-screen">
@@ -40,7 +42,11 @@ export default function Rooms() {
                         {rooms.map((room) => {
                             const statusInfo = getStatusDisplay(room.status);
                             return (
-                                <div key={room.id} className="border border-border rounded-lg p-5 notion-row-hover">
+                                <div
+                                    key={room.id}
+                                    className="border border-border rounded-lg p-5 notion-row-hover cursor-pointer transition-shadow hover:shadow-sm"
+                                    onClick={() => navigate(`/rooms/${room.id}`)}
+                                >
                                     <div className="flex items-center justify-between mb-4">
                                         <div className="flex items-center gap-3">
                                             <div className={`h-2.5 w-2.5 rounded-full ${statusInfo.dot}`} />

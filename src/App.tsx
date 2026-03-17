@@ -9,6 +9,7 @@ import CalendarPage from '@/pages/Calendar';
 import Patients from '@/pages/Patients';
 import Practitioners from '@/pages/Practitioners';
 import Rooms from '@/pages/Rooms';
+import RoomDetail from '@/pages/RoomDetail';
 import Analytics from '@/pages/Analytics';
 import SettingsPage from '@/pages/Settings';
 import VoiceAgent from '@/pages/VoiceAgent';
@@ -65,6 +66,7 @@ function App() {
                                 <Route path="/patients/:id" element={<PatientDetail />} />
                                 <Route path="/practitioners" element={<Practitioners />} />
                                 <Route path="/rooms" element={<Rooms />} />
+                                <Route path="/rooms/:id" element={<RoomDetail />} />
                                 <Route path="/analytics" element={<Analytics />} />
                                 <Route path="/settings" element={<SettingsPage />} />
                                 <Route path="/voice-agent" element={<VoiceAgent />} />
