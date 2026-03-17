@@ -4,7 +4,8 @@ import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/Layout';
 import Login from '@/pages/Login';
-import ComingSoon from '@/pages/ComingSoon';
+import Dashboard from '@/pages/Dashboard';
+import Rooms from '@/pages/Rooms';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -44,7 +45,8 @@ function App() {
                         <Route element={<ProtectedRoute />}>
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
                             <Route element={<Layout />}>
-                                <Route path="/dashboard" element={<ComingSoon />} />
+                                <Route path="/dashboard" element={<Dashboard />} />
+                                <Route path="/rooms" element={<Rooms />} />
                             </Route>
                         </Route>
                         <Route path="*" element={<Navigate to="/dashboard" replace />} />

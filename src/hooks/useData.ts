@@ -58,6 +58,76 @@ export function usePractitioners() {
     })
 }
 
+export function useUpdatePractitioner() {
+    const qc = useQueryClient()
+    return useMutation({
+        mutationFn: async ({ id, ...updates }: Partial<Practitioner> & { id: string }) => {
+            if (!isSupabaseConfigured) {
+                const idx = MOCK_PRACTITIONERS.findIndex(p => p.id === id)
+                if (idx >= 0) Object.assign(MOCK_PRACTITIONERS[idx], updates)
+                return MOCK_PRACTITIONERS[idx]
+            }
+            const { data, error } = await supabase!.from('practitioners').update(updates).eq('id', id).select().single()
+            if (error) throw error
+            return data
+        },
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['practitioners'] }),
+    })
+}
+
+export function useCreatePractitionerAccount() {
+    const qc = useQueryClient()
+    return useMutation({
+        mutationFn: async (params: {
+            email: string
+            password?: string
+            first_name: string
+            last_name: string
+            profession: string
+            phone?: string
+            sub_specialties?: string[]
+            skill_tags?: string[]
+            max_patients_per_day?: number
+        }) => {
+            if (!isSupabaseConfigured) {
+                const newPract = {
+                    ...params,
+                    id: `pract-${Date.now()}`,
+                    user_id: null,
+                    avatar_url: null,
+                    is_active: true,
+                    sub_specialties: params.sub_specialties || [],
+                    skill_tags: params.skill_tags || [],
+                    max_patients_per_day: params.max_patients_per_day || 12,
+                    created_at: new Date().toISOString(),
+                } as unknown as Practitioner
+                MOCK_PRACTITIONERS.push(newPract)
+                return {
+                    practitioner: newPract,
+                    credentials: { email: params.email, password: 'demo123' },
+                }
+            }
+            // Call Edge Function which creates auth user + practitioner + role
+            const { data: { session } } = await supabase!.auth.getSession()
+            const res = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-practitioner`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${session?.access_token}`,
+                    },
+                    body: JSON.stringify(params),
+                }
+            )
+            const result = await res.json()
+            if (!res.ok) throw new Error(result.error || 'Failed to create practitioner')
+            return result
+        },
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['practitioners'] }),
+    })
+}
+
 // ─── ROOMS ───────────────────────────────────────
 
 export function useRooms() {
@@ -208,5 +278,99 @@ export function useDashboardStats() {
                 pendingDeposits: appointments.filter((a: Appointment) => a.status === 'pending_deposit').length,
             }
         },
+    })
+}
+
+// ─── PRACTITIONER SCHEDULE ───────────────────────
+
+export interface PractScheduleEntry {
+    id?: string
+    practitioner_id: string
+    location_id: string
+    day_of_week: number
+    start_time: string
+    end_time: string
+}
+
+export function useCurrentPractitioner(userId: string | undefined) {
+    return useQuery({
+        queryKey: ['current-practitioner', userId],
+        enabled: !!userId,
+        queryFn: async (): Promise<Practitioner | null> => {
+            if (!isSupabaseConfigured || !userId) return MOCK_PRACTITIONERS[0] || null
+            const { data, error } = await supabase!.from('practitioners').select('*').eq('user_id', userId).single()
+            if (error) return null
+            return data
+        },
+    })
+}
+
+export function usePractitionerSchedules(practitionerId: string | undefined) {
+    return useQuery({
+        queryKey: ['practitioner-schedules', practitionerId],
+        enabled: !!practitionerId,
+        queryFn: async (): Promise<PractScheduleEntry[]> => {
+            if (!isSupabaseConfigured) return []
+            const { data, error } = await supabase!
+                .from('practitioner_schedules')
+                .select('*')
+                .eq('practitioner_id', practitionerId!)
+                .order('day_of_week', { ascending: true })
+            if (error) throw error
+            return data
+        },
+    })
+}
+
+export function useUpsertSchedule() {
+    const qc = useQueryClient()
+    return useMutation({
+        mutationFn: async (entry: PractScheduleEntry) => {
+            if (!isSupabaseConfigured) return entry
+            // Try update by practitioner + day, else insert
+            const { data: existing } = await supabase!
+                .from('practitioner_schedules')
+                .select('id')
+                .eq('practitioner_id', entry.practitioner_id)
+                .eq('day_of_week', entry.day_of_week)
+                .eq('location_id', entry.location_id)
+                .single()
+            if (existing) {
+                const { data, error } = await supabase!
+                    .from('practitioner_schedules')
+                    .update({ start_time: entry.start_time, end_time: entry.end_time })
+                    .eq('id', existing.id)
+                    .select()
+                    .single()
+                if (error) throw error
+                return data
+            } else {
+                const { data, error } = await supabase!
+                    .from('practitioner_schedules')
+                    .insert(entry)
+                    .select()
+                    .single()
+                if (error) throw error
+                return data
+            }
+        },
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['practitioner-schedules'] }),
+    })
+}
+
+export function useDeleteSchedule() {
+    const qc = useQueryClient()
+    return useMutation({
+        mutationFn: async ({ practitionerId, dayOfWeek, locationId }: { practitionerId: string; dayOfWeek: number; locationId: string }) => {
+            if (!isSupabaseConfigured) return
+            const { error } = await supabase!
+                .from('practitioner_schedules')
+                .delete()
+                .eq('practitioner_id', practitionerId)
+                .eq('day_of_week', dayOfWeek)
+                .eq('location_id', locationId)
+            if (error) throw error
+        },
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['practitioner-schedules'] }),
     })
 }

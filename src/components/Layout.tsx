@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
+    DoorOpen,
     LogOut,
     ChevronLeft,
     ChevronRight,
@@ -13,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Rooms', href: '/rooms', icon: DoorOpen },
 ];
 
 function SidebarItem({
