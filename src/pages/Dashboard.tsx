@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -6,6 +6,9 @@ import {
     Calendar,
     DollarSign,
     Phone,
+    Play,
+    Pause,
+    Volume2,
 } from 'lucide-react';
 import { useDashboardStats, useAppointments, useCallLogs } from '@/hooks/useData';
 import { formatTime } from '@/lib/utils';
@@ -35,6 +38,28 @@ export default function Dashboard() {
     const { data: appointments, isLoading: aptsLoading } = useAppointments(today);
     const { data: callLogs, isLoading: callsLoading } = useCallLogs();
     const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
+    const [playingCallId, setPlayingCallId] = useState<string | null>(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    const togglePlay = (callId: string, recordingUrl: string) => {
+        if (playingCallId === callId) {
+            // Pause
+            audioRef.current?.pause();
+            setPlayingCallId(null);
+        } else {
+            // Stop previous
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+            }
+            // Play new
+            const audio = new Audio(recordingUrl);
+            audio.onended = () => setPlayingCallId(null);
+            audio.play().catch(() => setPlayingCallId(null));
+            audioRef.current = audio;
+            setPlayingCallId(callId);
+        }
+    };
 
     const statCards = [
         { label: 'Total Patients', value: stats?.totalPatients ?? '–', icon: Users, change: `${stats?.pendingDeposits ?? 0} pending deposit` },
@@ -132,19 +157,49 @@ export default function Dashboard() {
                                 <p className="text-[13px] text-muted-foreground text-center py-4">No calls yet</p>
                             ) : (
                                 callLogs.slice(0, 5).map((call) => (
-                                    <div key={call.id} className="flex items-center gap-3 p-3 border border-border/60 rounded-lg notion-row-hover">
-                                        <div className={`h-2 w-2 rounded-full shrink-0 ${call.appointment_id ? 'bg-emerald-500' :
-                                            call.status === 'completed' ? 'bg-amber-500' : 'bg-gray-300'
-                                            }`} />
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[13px] font-medium truncate">{call.caller_phone || 'Unknown'}</p>
-                                            <p className="text-notion-caption">
-                                                {call.duration_seconds ? `${Math.floor(call.duration_seconds / 60)}:${String(call.duration_seconds % 60).padStart(2, '0')}` : '—'}
-                                            </p>
+                                    <div key={call.id} className="border border-border/60 rounded-lg overflow-hidden">
+                                        <div className="flex items-center gap-3 p-3 notion-row-hover">
+                                            <div className={`h-2 w-2 rounded-full shrink-0 ${call.appointment_id ? 'bg-emerald-500' :
+                                                call.status === 'completed' ? 'bg-amber-500' : 'bg-gray-300'
+                                                }`} />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[13px] font-medium truncate">{call.caller_phone || 'Unknown'}</p>
+                                                <p className="text-notion-caption">
+                                                    {call.duration_seconds ? `${Math.floor(call.duration_seconds / 60)}:${String(call.duration_seconds % 60).padStart(2, '0')}` : '—'}
+                                                    {call.created_at && <span className="ml-2 text-muted-foreground/60">· {new Date(call.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
+                                                </p>
+                                            </div>
+                                            {call.recording_url && (
+                                                <button
+                                                    onClick={() => togglePlay(call.id, call.recording_url!)}
+                                                    className={`h-7 w-7 rounded-full flex items-center justify-center transition-colors shrink-0 ${playingCallId === call.id
+                                                        ? 'bg-blue-100 text-blue-600'
+                                                        : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                                                        }`}
+                                                    title={playingCallId === call.id ? 'Pause' : 'Play recording'}
+                                                >
+                                                    {playingCallId === call.id ? (
+                                                        <Pause className="h-3.5 w-3.5" />
+                                                    ) : (
+                                                        <Play className="h-3.5 w-3.5 ml-0.5" />
+                                                    )}
+                                                </button>
+                                            )}
+                                            {!call.recording_url && call.status === 'completed' && (
+                                                <Volume2 className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                                            )}
+                                            <Badge variant={call.appointment_id ? 'success' : call.status === 'completed' ? 'warning' : 'secondary'}>
+                                                {call.appointment_id ? 'Booked' : call.status === 'completed' ? 'Follow-up' : call.status}
+                                            </Badge>
                                         </div>
-                                        <Badge variant={call.appointment_id ? 'success' : call.status === 'completed' ? 'warning' : 'secondary'}>
-                                            {call.appointment_id ? 'Booked' : call.status === 'completed' ? 'Follow-up' : call.status}
-                                        </Badge>
+                                        {playingCallId === call.id && (
+                                            <div className="px-3 pb-2 flex items-center gap-2">
+                                                <div className="flex-1 h-1 bg-blue-100 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: '45%' }} />
+                                                </div>
+                                                <span className="text-[10px] text-blue-500 font-mono">Playing…</span>
+                                            </div>
+                                        )}
                                     </div>
                                 ))
                             )}
@@ -161,3 +216,4 @@ export default function Dashboard() {
         </div>
     );
 }
+

@@ -169,6 +169,7 @@ export interface CallLog {
     matched_service_id: string | null
     appointment_id: string | null
     transcript: string | null
+    recording_url: string | null
     status: 'in_progress' | 'completed' | 'no_answer' | 'busy' | 'voicemail' | 'failed'
     created_at: string
 }
