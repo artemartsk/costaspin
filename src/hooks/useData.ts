@@ -135,9 +135,17 @@ export function useRooms() {
     return useQuery({
         queryKey: ['rooms'],
         queryFn: async (): Promise<Room[]> => {
-            if (!isSupabaseConfigured) return MOCK_ROOMS
+            if (!isSupabaseConfigured) {
+                console.log('[useRooms] 🟡 MOCK MODE — returning mock data')
+                return MOCK_ROOMS
+            }
+            console.log('[useRooms] 🟢 SUPABASE MODE — querying database')
             const { data, error } = await supabase!.from('rooms').select('*')
-            if (error) throw error
+            if (error) {
+                console.error('[useRooms] ❌ Supabase error:', error.message)
+                throw error
+            }
+            console.log('[useRooms] ✅ Got', data.length, 'rooms from Supabase:', data.map(r => r.name))
             return data
         },
     })
