@@ -22,20 +22,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Calendar', href: '/calendar', icon: Calendar },
-    { name: 'My Calendar', href: '/my-calendar', icon: CalendarCheck2 },
-    { name: 'Patients', href: '/patients', icon: Users },
     { name: 'Practitioners', href: '/practitioners', icon: UserCog },
     { name: 'Rooms', href: '/rooms', icon: DoorOpen },
 ];
 
-const secondaryNav = [
-    { name: 'Voice Agent', href: '/voice-agent', icon: Phone },
-    { name: 'WhatsApp', href: '/whatsapp', icon: MessageSquare },
-];
+const secondaryNav: typeof navigation = [];
 
 const bottomNav = [
-    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
     { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
