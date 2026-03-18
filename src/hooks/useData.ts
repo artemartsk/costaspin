@@ -514,3 +514,79 @@ export function useDeleteSchedule() {
         onSuccess: () => qc.invalidateQueries({ queryKey: ['practitioner-schedules'] }),
     })
 }
+
+// ─── PRACTITIONER DETAIL ──────────────────────────
+
+export function usePractitioner(id: string | undefined) {
+    return useQuery({
+        queryKey: ['practitioner', id],
+        enabled: !!id,
+        queryFn: async (): Promise<Practitioner | null> => {
+            if (!isSupabaseConfigured) return MOCK_PRACTITIONERS.find(p => p.id === id) ?? null
+            const { data, error } = await supabase!.from('practitioners').select('*').eq('id', id!).single()
+            if (error) throw error
+            return data
+        },
+    })
+}
+
+export function usePractitionerAppointments(practitionerId: string | undefined, range: 'today' | 'past') {
+    const today = new Date().toISOString().split('T')[0]
+    return useQuery({
+        queryKey: ['practitioner-appointments', practitionerId, range],
+        enabled: !!practitionerId,
+        queryFn: async (): Promise<Appointment[]> => {
+            if (!isSupabaseConfigured) {
+                return MOCK_APPOINTMENTS.filter(a => a.practitioner_id === practitionerId)
+            }
+            let query = supabase!.from('appointments')
+                .select('*, patient:patients(*), service:services(*), room:rooms(*), practitioner:practitioners(*)')
+                .eq('practitioner_id', practitionerId!)
+            if (range === 'today') {
+                query = query.gte('start_time', `${today}T00:00:00`).lte('start_time', `${today}T23:59:59`).order('start_time', { ascending: true })
+            } else {
+                query = query.lt('start_time', `${today}T00:00:00`).order('start_time', { ascending: false }).limit(30)
+            }
+            const { data, error } = await query
+            if (error) throw error
+            return data
+        },
+    })
+}
+
+interface PractitionerLocation {
+    id: string
+    name: string
+    address: string
+}
+
+export function usePractitionerLocations(practitionerId: string | undefined) {
+    return useQuery({
+        queryKey: ['practitioner-locations', practitionerId],
+        enabled: !!practitionerId,
+        queryFn: async (): Promise<PractitionerLocation[]> => {
+            if (!isSupabaseConfigured) return [{ id: '1', name: 'CostaSpine Elviria', address: 'Urb. Elviria, Marbella' }]
+            const { data, error } = await supabase!
+                .from('practitioner_locations')
+                .select('location:locations(id, name, address)')
+                .eq('practitioner_id', practitionerId!)
+            if (error) throw error
+            return (data || []).map((d: any) => d.location).filter(Boolean)
+        },
+    })
+}
+
+export function usePractitionerServices(practitionerId: string | undefined) {
+    return useQuery({
+        queryKey: ['practitioner-services', practitionerId],
+        enabled: !!practitionerId,
+        queryFn: async (): Promise<Service[]> => {
+            if (!isSupabaseConfigured) return MOCK_SERVICES
+            // Get services based on practitioner's skill_tags/profession alignment
+            // For now, return all services (will be filtered in UI by room_type match)
+            const { data, error } = await supabase!.from('services').select('*')
+            if (error) throw error
+            return data
+        },
+    })
+}
