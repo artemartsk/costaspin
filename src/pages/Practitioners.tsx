@@ -2,7 +2,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, X, Pencil, Copy, Check, Eye, EyeOff } from 'lucide-react';
+import { Plus, X, Pencil, Copy, Check, Eye, EyeOff, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { usePractitioners, useAppointments, useUpdatePractitioner, useCreatePractitionerAccount } from '@/hooks/useData';
 import { useMemo, useState, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -41,6 +42,7 @@ export default function Practitioners() {
     const { data: todayApts } = useAppointments(today);
     const updatePractitioner = useUpdatePractitioner();
     const createPractitioner = useCreatePractitionerAccount();
+    const navigate = useNavigate();
 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showCreate, setShowCreate] = useState(false);
@@ -192,7 +194,7 @@ export default function Practitioners() {
                                                 <AvatarFallback className="text-[13px] bg-foreground/5">{p.first_name[0]}{p.last_name[0]}</AvatarFallback>
                                             </Avatar>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-[14px] font-medium truncate">{p.first_name} {p.last_name}</p>
+                                                <p className="text-[14px] font-medium truncate cursor-pointer hover:text-blue-600 transition-colors" onClick={(e) => { e.stopPropagation(); navigate(`/practitioners/${p.id}`); }}>{p.first_name} {p.last_name}</p>
                                                 <p className="text-notion-caption">{p.profession}</p>
                                             </div>
                                             <button className="p-1.5 rounded-md hover:bg-muted" onClick={(e) => { e.stopPropagation(); setEditingId(p.id); setShowCreate(false); }}>
