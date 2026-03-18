@@ -33,6 +33,20 @@ const FORMS = [
         legal: 'By checking this box, I confirm I have read and agree to the cancellation policy.',
     },
     {
+        id: 'medical_data_consent',
+        title: 'Medical Data Consent (GDPR Art. 9)',
+        icon: ShieldCheck,
+        description: 'CostaSpine needs to collect and process your health data (diagnosis, treatment plans, clinical notes) to provide healthcare services. Your data is stored securely in the EU with encryption and strict access controls. You can withdraw consent at any time by contacting privacy@costaspine.com.',
+        legal: 'I explicitly consent to the processing of my health data by CostaSpine for the purpose of receiving treatment, in accordance with GDPR Article 9(2)(a) and the LOPDGDD. I have read the Privacy Policy (costaspine.com/privacy).',
+    },
+    {
+        id: 'data_processing',
+        title: 'Data Processing Agreement',
+        icon: FileText,
+        description: 'CostaSpine processes your personal data (name, contact details, appointment history) to manage your care. Data may be shared with our processors (Supabase, Stripe, Twilio) under strict Data Processing Agreements. Full details in our Privacy Policy.',
+        legal: 'I consent to the processing of my personal data as described in the CostaSpine Privacy Policy (costaspine.com/privacy).',
+    },
+    {
         id: 'newsletter_consent',
         title: 'Marketing & Newsletter Consent',
         icon: Mail,
@@ -113,10 +127,15 @@ export default function PatientFormsPage() {
                 });
             }
 
-            // Update patient forms_completed flag
+            // Update patient forms_completed flag and consent fields
             await supabase.from('patients').update({
                 forms_completed: true,
                 marketing_consent: agreed['newsletter_consent'] || false,
+                medical_data_consent: agreed['medical_data_consent'] || false,
+                medical_consent_date: agreed['medical_data_consent'] ? new Date().toISOString() : null,
+                data_processing_consent: agreed['data_processing'] || false,
+                data_processing_consent_date: agreed['data_processing'] ? new Date().toISOString() : null,
+                privacy_policy_version: '1.0',
                 updated_at: new Date().toISOString(),
             }).eq('id', patient.id);
 
@@ -232,7 +251,7 @@ export default function PatientFormsPage() {
                 </Button>
 
                 <p className="text-xs text-gray-400 text-center">
-                    CostaSpine · Urb. Elviria, Marbella · GDPR Compliant
+                    CostaSpine · Urb. Elviria, Marbella · <a href="/privacy" target="_blank" className="underline hover:text-gray-600">Privacy Policy</a> · GDPR Compliant
                 </p>
             </div>
         </div>
