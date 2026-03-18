@@ -353,8 +353,13 @@ export function useCallLogs() {
         queryKey: ['call_logs'],
         queryFn: async (): Promise<CallLog[]> => {
             if (!isSupabaseConfigured) return MOCK_CALL_LOGS
+            console.log('[useCallLogs] 🟢 querying Supabase...')
             const { data, error } = await supabase!.from('call_logs').select('*').order('created_at', { ascending: false }).limit(20)
-            if (error) throw error
+            if (error) {
+                console.error('[useCallLogs] ❌ Error:', error.message, error.code, error.details)
+                throw error
+            }
+            console.log('[useCallLogs] ✅ Got', data.length, 'calls')
             return data
         },
     })
