@@ -396,7 +396,7 @@ export function useDashboardStats() {
             const [patientsRes, appointmentsRes, callsRes] = await Promise.all([
                 supabase!.from('patients').select('id', { count: 'exact', head: true }),
                 supabase!.from('appointments').select('*').gte('start_time', `${today}T00:00:00`).lte('start_time', `${today}T23:59:59`),
-                supabase!.from('call_logs').select('*').gte('created_at', `${today}T00:00:00`),
+                supabase!.from('call_logs').select('*').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
             ])
 
             const appointments = appointmentsRes.data || []

@@ -40,7 +40,7 @@ export default function Dashboard() {
         { label: 'Total Patients', value: stats?.totalPatients ?? '–', icon: Users, change: `${stats?.pendingDeposits ?? 0} pending deposit` },
         { label: 'Appointments Today', value: stats?.appointmentsToday ?? '–', icon: Calendar, change: `${stats?.pendingDeposits ?? 0} awaiting deposit` },
         { label: 'Deposit Rate', value: stats?.depositRate != null ? `${stats.depositRate}%` : '–', icon: DollarSign, change: 'of today\'s bookings' },
-        { label: 'AI Calls Today', value: stats?.aiCallsToday ?? '–', icon: Phone, change: `${stats?.bookedFromCalls ?? 0} booked` },
+        { label: 'AI Calls (7d)', value: stats?.aiCallsToday ?? '–', icon: Phone, change: `${stats?.bookedFromCalls ?? 0} booked` },
     ];
 
     return (
@@ -123,7 +123,7 @@ export default function Dashboard() {
                     <div>
                         <div className="flex items-center justify-between mb-3">
                             <h2 className="text-[15px] font-medium">Recent AI Calls</h2>
-                            <span className="text-notion-caption">Today</span>
+                            <span className="text-notion-caption">Last 7 days</span>
                         </div>
                         <div className="space-y-2">
                             {callsLoading ? (
