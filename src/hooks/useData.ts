@@ -1,18 +1,16 @@
-// Data hooks — dual-mode (Supabase or mock data)
+// Data hooks — Strict Supabase mode
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
-import {
-    MOCK_PATIENTS,
-    MOCK_PRACTITIONERS,
-    MOCK_ROOMS,
-    MOCK_SERVICES,
-    MOCK_APPOINTMENTS,
-    MOCK_CALL_LOGS,
-    MOCK_LOCATION,
-    MOCK_ROOM_MAINTENANCE_LOGS,
-} from '@/lib/mock-data'
-import type { Patient, Practitioner, Room, RoomMaintenanceLog, Service, Appointment, CallLog } from '@/types'
+import type { Patient, Practitioner, Room, RoomMaintenanceLog, Service, Appointment, CallLog, Location } from '@/types'
+
+// ─── FAIL FAST ───────────────────────────────────
+
+function assertSupabase() {
+    if (!isSupabaseConfigured) {
+        throw new Error('Supabase is not configured. Active database connection required.')
+    }
+}
 
 // ─── PATIENTS ────────────────────────────────────
 
@@ -20,7 +18,7 @@ export function usePatients() {
     return useQuery({
         queryKey: ['patients'],
         queryFn: async (): Promise<Patient[]> => {
-            if (!isSupabaseConfigured) return MOCK_PATIENTS
+            assertSupabase()
             const { data, error } = await supabase!.from('patients').select('*').order('created_at', { ascending: false })
             if (error) throw error
             return data
@@ -32,11 +30,7 @@ export function useCreatePatient() {
     const qc = useQueryClient()
     return useMutation({
         mutationFn: async (patient: Partial<Patient>) => {
-            if (!isSupabaseConfigured) {
-                const newPatient = { ...patient, id: `p${Date.now()}`, created_at: new Date().toISOString() } as Patient
-                MOCK_PATIENTS.unshift(newPatient)
-                return newPatient
-            }
+            assertSupabase()
             const { data, error } = await supabase!.from('patients').insert(patient).select().single()
             if (error) throw error
             return data
@@ -51,7 +45,7 @@ export function usePractitioners() {
     return useQuery({
         queryKey: ['practitioners'],
         queryFn: async (): Promise<Practitioner[]> => {
-            if (!isSupabaseConfigured) return MOCK_PRACTITIONERS
+            assertSupabase()
             const { data, error } = await supabase!.from('practitioners').select('*').eq('is_active', true)
             if (error) throw error
             return data
@@ -63,11 +57,7 @@ export function useUpdatePractitioner() {
     const qc = useQueryClient()
     return useMutation({
         mutationFn: async ({ id, ...updates }: Partial<Practitioner> & { id: string }) => {
-            if (!isSupabaseConfigured) {
-                const idx = MOCK_PRACTITIONERS.findIndex(p => p.id === id)
-                if (idx >= 0) Object.assign(MOCK_PRACTITIONERS[idx], updates)
-                return MOCK_PRACTITIONERS[idx]
-            }
+            assertSupabase()
             const { data, error } = await supabase!.from('practitioners').update(updates).eq('id', id).select().single()
             if (error) throw error
             return data
@@ -90,25 +80,7 @@ export function useCreatePractitionerAccount() {
             skill_tags?: string[]
             max_patients_per_day?: number
         }) => {
-            if (!isSupabaseConfigured) {
-                const newPract = {
-                    ...params,
-                    id: `pract-${Date.now()}`,
-                    user_id: null,
-                    avatar_url: null,
-                    is_active: true,
-                    sub_specialties: params.sub_specialties || [],
-                    skill_tags: params.skill_tags || [],
-                    max_patients_per_day: params.max_patients_per_day || 12,
-                    created_at: new Date().toISOString(),
-                } as unknown as Practitioner
-                MOCK_PRACTITIONERS.push(newPract)
-                return {
-                    practitioner: newPract,
-                    credentials: { email: params.email, password: 'demo123' },
-                }
-            }
-            // Call Edge Function which creates auth user + practitioner + role
+            assertSupabase()
             const { data: { session } } = await supabase!.auth.getSession()
             const res = await fetch(
                 `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-practitioner`,
@@ -135,17 +107,9 @@ export function useRooms() {
     return useQuery({
         queryKey: ['rooms'],
         queryFn: async (): Promise<Room[]> => {
-            if (!isSupabaseConfigured) {
-                console.log('[useRooms] 🟡 MOCK MODE — returning mock data')
-                return MOCK_ROOMS
-            }
-            console.log('[useRooms] 🟢 SUPABASE MODE — querying database')
+            assertSupabase()
             const { data, error } = await supabase!.from('rooms').select('*')
-            if (error) {
-                console.error('[useRooms] ❌ Supabase error:', error.message)
-                throw error
-            }
-            console.log('[useRooms] ✅ Got', data.length, 'rooms from Supabase:', data.map(r => r.name))
+            if (error) throw error
             return data
         },
     })
@@ -159,7 +123,7 @@ export function useRoom(id: string | undefined) {
         queryKey: ['room', id],
         enabled: !!id,
         queryFn: async (): Promise<Room | null> => {
-            if (!isSupabaseConfigured) return MOCK_ROOMS.find(r => r.id === id) || null
+            assertSupabase()
             const { data, error } = await supabase!.from('rooms').select('*').eq('id', id!).single()
             if (error) return null
             return data
@@ -173,11 +137,7 @@ export function useRoomAppointments(roomId: string | undefined, range: 'today' |
         queryKey: ['room-appointments', roomId, range],
         enabled: !!roomId,
         queryFn: async (): Promise<Appointment[]> => {
-            if (!isSupabaseConfigured) {
-                const apts = MOCK_APPOINTMENTS.filter(a => a.room_id === roomId)
-                // For 'past', return all; for 'today', filter by today
-                return apts.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-            }
+            assertSupabase()
             const today = new Date().toISOString().split('T')[0]
             let query = supabase!
                 .from('appointments')
@@ -203,10 +163,7 @@ export function useRoomMaintenanceLogs(roomId: string | undefined) {
         queryKey: ['room-maintenance', roomId],
         enabled: !!roomId,
         queryFn: async (): Promise<RoomMaintenanceLog[]> => {
-            if (!isSupabaseConfigured) {
-                return MOCK_ROOM_MAINTENANCE_LOGS.filter(l => l.room_id === roomId)
-                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            }
+            assertSupabase()
             const { data, error } = await supabase!
                 .from('room_maintenance_logs')
                 .select('*')
@@ -224,12 +181,7 @@ export function useRoomSupportedServices(roomId: string | undefined) {
         queryKey: ['room-services', roomId],
         enabled: !!roomId,
         queryFn: async (): Promise<Service[]> => {
-            if (!isSupabaseConfigured) {
-                // Derive from room type
-                const room = MOCK_ROOMS.find(r => r.id === roomId)
-                if (!room) return []
-                return MOCK_SERVICES.filter(s => s.room_type === room.type || s.category === 'assessment')
-            }
+            assertSupabase()
             const { data, error } = await supabase!
                 .from('room_supported_services')
                 .select('service:services(*)')
@@ -244,11 +196,7 @@ export function useUpdateRoomStatus() {
     const qc = useQueryClient()
     return useMutation({
         mutationFn: async ({ id, status }: { id: string; status: Room['status'] }) => {
-            if (!isSupabaseConfigured) {
-                const idx = MOCK_ROOMS.findIndex(r => r.id === id)
-                if (idx >= 0) MOCK_ROOMS[idx].status = status
-                return MOCK_ROOMS[idx]
-            }
+            assertSupabase()
             const { data, error } = await supabase!.from('rooms').update({ status }).eq('id', id).select().single()
             if (error) throw error
             return data
@@ -264,11 +212,7 @@ export function useAddMaintenanceLog() {
     const qc = useQueryClient()
     return useMutation({
         mutationFn: async (log: { room_id: string; note: string; reported_by: string }) => {
-            if (!isSupabaseConfigured) {
-                const newLog: RoomMaintenanceLog = { ...log, id: `ml${Date.now()}`, resolved: false, created_at: new Date().toISOString() }
-                MOCK_ROOM_MAINTENANCE_LOGS.unshift(newLog)
-                return newLog
-            }
+            assertSupabase()
             const { data, error } = await supabase!.from('room_maintenance_logs').insert(log).select().single()
             if (error) throw error
             return data
@@ -283,7 +227,7 @@ export function useServices() {
     return useQuery({
         queryKey: ['services'],
         queryFn: async (): Promise<Service[]> => {
-            if (!isSupabaseConfigured) return MOCK_SERVICES
+            assertSupabase()
             const { data, error } = await supabase!.from('services').select('*').eq('is_active', true)
             if (error) throw error
             return data
@@ -297,17 +241,28 @@ export function useAppointments(date?: string) {
     return useQuery({
         queryKey: ['appointments', date],
         queryFn: async (): Promise<Appointment[]> => {
-            if (!isSupabaseConfigured) return MOCK_APPOINTMENTS
+            assertSupabase()
             let query = supabase!
                 .from('appointments')
-                .select('*, patient:patients(*), practitioner:practitioners(*), service:services(*), room:rooms(*)')
+                .select('*, patient:patients(*), practitioner:practitioners(*), service:services(*), room:rooms(*), call_logs(recording_url, transcript, triage_result)')
                 .order('start_time', { ascending: true })
             if (date) {
                 query = query.gte('start_time', `${date}T00:00:00`).lte('start_time', `${date}T23:59:59`)
             }
             const { data, error } = await query
             if (error) throw error
-            return data
+            
+            return data.map((apt: any) => {
+                const callLog = apt.call_logs?.[0];
+                const hasTriageData = apt.triage_data && Object.keys(apt.triage_data).length > 0;
+                
+                return {
+                    ...apt,
+                    triage_data: hasTriageData ? apt.triage_data : (callLog?.triage_result || {}),
+                    recording_url: callLog?.recording_url || null,
+                    transcript: callLog?.transcript || null,
+                };
+            })
         },
     })
 }
@@ -316,11 +271,7 @@ export function useCreateAppointment() {
     const qc = useQueryClient()
     return useMutation({
         mutationFn: async (apt: Partial<Appointment>) => {
-            if (!isSupabaseConfigured) {
-                const newApt = { ...apt, id: `a${Date.now()}`, created_at: new Date().toISOString() } as Appointment
-                MOCK_APPOINTMENTS.push(newApt)
-                return newApt
-            }
+            assertSupabase()
             const { data, error } = await supabase!.from('appointments').insert(apt).select().single()
             if (error) throw error
             return data
@@ -333,11 +284,7 @@ export function useUpdateAppointment() {
     const qc = useQueryClient()
     return useMutation({
         mutationFn: async ({ id, ...updates }: Partial<Appointment> & { id: string }) => {
-            if (!isSupabaseConfigured) {
-                const idx = MOCK_APPOINTMENTS.findIndex((a) => a.id === id)
-                if (idx >= 0) Object.assign(MOCK_APPOINTMENTS[idx], updates)
-                return MOCK_APPOINTMENTS[idx]
-            }
+            assertSupabase()
             const { data, error } = await supabase!.from('appointments').update(updates).eq('id', id).select().single()
             if (error) throw error
             return data
@@ -352,14 +299,9 @@ export function useCallLogs() {
     return useQuery({
         queryKey: ['call_logs'],
         queryFn: async (): Promise<CallLog[]> => {
-            if (!isSupabaseConfigured) return MOCK_CALL_LOGS
-            console.log('[useCallLogs] 🟢 querying Supabase...')
+            assertSupabase()
             const { data, error } = await supabase!.from('call_logs').select('*').order('created_at', { ascending: false }).limit(20)
-            if (error) {
-                console.error('[useCallLogs] ❌ Error:', error.message, error.code, error.details)
-                throw error
-            }
-            console.log('[useCallLogs] ✅ Got', data.length, 'calls')
+            if (error) throw error
             return data
         },
     })
@@ -367,11 +309,23 @@ export function useCallLogs() {
 
 // ─── LOCATION ────────────────────────────────────
 
+export function useLocations() {
+    return useQuery({
+        queryKey: ['locations'],
+        queryFn: async (): Promise<Location[]> => {
+            assertSupabase()
+            const { data, error } = await supabase!.from('locations').select('*').eq('is_active', true)
+            if (error) throw error
+            return data
+        },
+    })
+}
+
 export function useLocation() {
     return useQuery({
         queryKey: ['location'],
-        queryFn: async () => {
-            if (!isSupabaseConfigured) return MOCK_LOCATION
+        queryFn: async (): Promise<Location> => {
+            assertSupabase()
             const { data, error } = await supabase!.from('locations').select('*').eq('is_active', true).single()
             if (error) throw error
             return data
@@ -385,17 +339,7 @@ export function useDashboardStats() {
     return useQuery({
         queryKey: ['dashboard-stats'],
         queryFn: async () => {
-            if (!isSupabaseConfigured) {
-                return {
-                    totalPatients: MOCK_PATIENTS.length,
-                    appointmentsToday: MOCK_APPOINTMENTS.length,
-                    depositRate: 89,
-                    aiCallsToday: MOCK_CALL_LOGS.length,
-                    bookedFromCalls: MOCK_CALL_LOGS.filter((c) => c.appointment_id).length,
-                    pendingDeposits: MOCK_APPOINTMENTS.filter((a) => a.status === 'pending_deposit').length,
-                }
-            }
-
+            assertSupabase()
             const today = new Date().toISOString().split('T')[0]
 
             const [patientsRes, appointmentsRes, callsRes] = await Promise.all([
@@ -437,8 +381,8 @@ export function useCurrentPractitioner(userId: string | undefined) {
         queryKey: ['current-practitioner', userId],
         enabled: !!userId,
         queryFn: async (): Promise<Practitioner | null> => {
-            if (!isSupabaseConfigured || !userId) return MOCK_PRACTITIONERS[0] || null
-            const { data, error } = await supabase!.from('practitioners').select('*').eq('user_id', userId).single()
+            assertSupabase()
+            const { data, error } = await supabase!.from('practitioners').select('*').eq('user_id', userId!).single()
             if (error) return null
             return data
         },
@@ -450,7 +394,7 @@ export function usePractitionerSchedules(practitionerId: string | undefined) {
         queryKey: ['practitioner-schedules', practitionerId],
         enabled: !!practitionerId,
         queryFn: async (): Promise<PractScheduleEntry[]> => {
-            if (!isSupabaseConfigured) return []
+            assertSupabase()
             const { data, error } = await supabase!
                 .from('practitioner_schedules')
                 .select('*')
@@ -462,11 +406,26 @@ export function usePractitionerSchedules(practitionerId: string | undefined) {
     })
 }
 
+export function useAllPractitionerSchedules() {
+    return useQuery({
+        queryKey: ['practitioner-schedules', 'all'],
+        queryFn: async (): Promise<PractScheduleEntry[]> => {
+            assertSupabase()
+            const { data, error } = await supabase!
+                .from('practitioner_schedules')
+                .select('*')
+                .order('day_of_week', { ascending: true })
+            if (error) throw error
+            return data
+        },
+    })
+}
+
 export function useUpsertSchedule() {
     const qc = useQueryClient()
     return useMutation({
         mutationFn: async (entry: PractScheduleEntry) => {
-            if (!isSupabaseConfigured) return entry
+            assertSupabase()
             // Try update by practitioner + day, else insert
             const { data: existing } = await supabase!
                 .from('practitioner_schedules')
@@ -502,7 +461,7 @@ export function useDeleteSchedule() {
     const qc = useQueryClient()
     return useMutation({
         mutationFn: async ({ practitionerId, dayOfWeek, locationId }: { practitionerId: string; dayOfWeek: number; locationId: string }) => {
-            if (!isSupabaseConfigured) return
+            assertSupabase()
             const { error } = await supabase!
                 .from('practitioner_schedules')
                 .delete()
@@ -522,7 +481,7 @@ export function usePractitioner(id: string | undefined) {
         queryKey: ['practitioner', id],
         enabled: !!id,
         queryFn: async (): Promise<Practitioner | null> => {
-            if (!isSupabaseConfigured) return MOCK_PRACTITIONERS.find(p => p.id === id) ?? null
+            assertSupabase()
             const { data, error } = await supabase!.from('practitioners').select('*').eq('id', id!).single()
             if (error) throw error
             return data
@@ -536,9 +495,7 @@ export function usePractitionerAppointments(practitionerId: string | undefined, 
         queryKey: ['practitioner-appointments', practitionerId, range],
         enabled: !!practitionerId,
         queryFn: async (): Promise<Appointment[]> => {
-            if (!isSupabaseConfigured) {
-                return MOCK_APPOINTMENTS.filter(a => a.practitioner_id === practitionerId)
-            }
+            assertSupabase()
             let query = supabase!.from('appointments')
                 .select('*, patient:patients(*), service:services(*), room:rooms(*), practitioner:practitioners(*)')
                 .eq('practitioner_id', practitionerId!)
@@ -565,7 +522,7 @@ export function usePractitionerLocations(practitionerId: string | undefined) {
         queryKey: ['practitioner-locations', practitionerId],
         enabled: !!practitionerId,
         queryFn: async (): Promise<PractitionerLocation[]> => {
-            if (!isSupabaseConfigured) return [{ id: '1', name: 'CostaSpine Elviria', address: 'Urb. Elviria, Marbella' }]
+            assertSupabase()
             const { data, error } = await supabase!
                 .from('practitioner_locations')
                 .select('location:locations(id, name, address)')
@@ -581,9 +538,7 @@ export function usePractitionerServices(practitionerId: string | undefined) {
         queryKey: ['practitioner-services', practitionerId],
         enabled: !!practitionerId,
         queryFn: async (): Promise<Service[]> => {
-            if (!isSupabaseConfigured) return MOCK_SERVICES
-            // Get services based on practitioner's skill_tags/profession alignment
-            // For now, return all services (will be filtered in UI by room_type match)
+            assertSupabase()
             const { data, error } = await supabase!.from('services').select('*')
             if (error) throw error
             return data

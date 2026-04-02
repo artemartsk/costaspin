@@ -17,6 +17,10 @@ import {
     Dumbbell,
     Armchair,
     AlertCircle,
+    Bot,
+    MessageCircle,
+    Globe,
+    User,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -254,6 +258,7 @@ export default function RoomDetail() {
                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Date & Time</th>
                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Practitioner</th>
                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Service</th>
+                                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Source</th>
                                             <th className="text-left px-3 py-2 font-medium text-muted-foreground">Status</th>
                                         </tr>
                                     </thead>
@@ -274,6 +279,14 @@ export default function RoomDetail() {
                                                         </td>
                                                         <td className="px-3 py-2.5">Dr. {pract?.last_name || '—'}</td>
                                                         <td className="px-3 py-2.5 text-muted-foreground">{svc?.name || '—'}</td>
+                                                        <td className="px-3 py-2.5">
+                                                            <div className="flex items-center gap-1.5 opacity-80">
+                                                                {apt.booking_source === 'ai_phone' && <><Bot className="h-4 w-4 text-primary" /><span className="text-[11px] font-medium text-primary">AI Phone</span></>}
+                                                                {apt.booking_source === 'whatsapp' && <><MessageCircle className="h-4 w-4 text-emerald-600" /><span className="text-[11px] font-medium text-emerald-700">WhatsApp</span></>}
+                                                                {apt.booking_source === 'web' && <><Globe className="h-4 w-4 text-blue-500" /><span className="text-[11px] font-medium text-blue-600">Web</span></>}
+                                                                {apt.booking_source === 'manual' && <><User className="h-4 w-4 text-muted-foreground" /><span className="text-[11px] font-medium text-muted-foreground">Admin</span></>}
+                                                            </div>
+                                                        </td>
                                                         <td className="px-3 py-2.5">{appointmentStatusBadge(apt.status)}</td>
                                                     </tr>
                                                 );

@@ -138,6 +138,8 @@ export interface Appointment {
     diagnosis: string | null
     treatment_plan: string | null
     triage_data: Record<string, unknown>
+    recording_url?: string | null
+    transcript?: string | null
     created_at: string
     // Joined relations for display
     patient?: Patient
@@ -177,7 +179,7 @@ export interface CallLog {
 export interface Reminder {
     id: string
     appointment_id: string
-    type: '24h' | '6h' | 'post_visit' | 'review_request'
+    type: '24h' | '6h' | 'post_visit' | 'review_request' | 'onboarding' | 'confirmation'
     channel: string
     message_sid: string | null
     status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed'
