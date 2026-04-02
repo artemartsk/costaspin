@@ -22,7 +22,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Calendar', href: '/calendar', icon: Calendar },
     { name: 'Practitioners', href: '/practitioners', icon: UserCog },
+    { name: 'Rooms', href: '/rooms', icon: DoorOpen },
 ];
 
 const secondaryNav: typeof navigation = [];
