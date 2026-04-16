@@ -27,9 +27,13 @@
 | **[TASK_QA_05](./TASK_QA_05_appointment_details.md)** | QA Tests: Appointment Details Panel & Playback | QA Engineer | 🟢 **DONE** | Ошибок нет, добавили фикс `editingAppointment` |
 | **[TASK_10](./TASK_10_calendar_datepicker.md)** | Calendar Navigation (DatePicker Popover) | Frontend Dev | 🟢 **DONE** | DatePicker внедрен, стейт `currentDate` работает |
 | **[TASK_QA_06](./TASK_QA_06_room_dashboard.md)** | QA Tests: Room Dashboard Analytics & Logic | QA Engineer | ⚪️ **TODO** | Требуется покрытие логики `analytics` в MSW |
+| **[TASK_11](./epic_3_emr/TASK_11_patient_profile_tabs.md)** | Patient Profile Tabbed Navigation (UI Refactor) | Frontend Dev | 🟢 **DONE** | UI свёрстан (вкладки на месте) |
+| **[TASK_12](./epic_3_emr/TASK_12_clinical_notes.md)** | Clinical SOAP Notes (Backend + Frontend) | Fullstack Dev | 🟢 **DONE** | БД миграция создана, UI работает, ждет деплоя менеджером |
+| **[TASK_13](./epic_3_emr/TASK_13_documents.md)** | Patient Documents & GDPR PDF Generation | Frontend Dev | 🟢 **DONE** | Master Consent Record PDF генерация готова |
+| **[TASK_14](./epic_3_emr/TASK_14_communications.md)** | AI Communications Timeline | Frontend Dev | 🟢 **DONE** | Единая лента (Звонки + WhatsApp) сверстана по дизайну |
 
 ---
 
 ## 📊 Next Action Items
-1. **Frontend:** Вернуть `TASK_03` в работу. Дописать фильтрацию `Services` по специализации врача и отсеять занятые кабинеты из дропдауна `Rooms`.
-2. **Backend:** Запустить разработку `TASK_05` (Postgres Trigger -> Edge Function) для автоматической отправки сообщений в WhatsApp при бронировании.
+1. **Epic 3:** Все задачи по EMR пациента в рамках Эпика успешно завершены.
+2. **Manager (Artem):** Выполнить Manual Deployment миграции БД `013_clinical_notes.sql` на продакшен-инстанс Supabase. Устроить QA тестирование всего профиля.

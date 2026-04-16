@@ -17,12 +17,13 @@ import {
     Dumbbell,
     Armchair,
     AlertCircle,
-    Bot,
     MessageCircle,
     Globe,
     User,
+    Bot,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { EditRoomModal } from '@/components/EditRoomModal';
 
 /* ─── status helpers ─────────────────────────── */
 
@@ -83,19 +84,22 @@ export default function RoomDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { data: room } = useRoom(id);
-    const { data: roomAppointments = [] } = useRoomAppointments(id, 'today');
+    const { data: todayAppointments = [] } = useRoomAppointments(id, 'today');
+    const { data: allAppointments = [] } = useRoomAppointments(id, 'all');
     const { data: maintenanceLogs = [] } = useRoomMaintenanceLogs(id);
     const { data: supportedServices = [] } = useRoomSupportedServices(id);
     const { data: practitioners } = usePractitioners();
     const { data: services } = useServices();
+
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'bookings' | 'maintenance'>('bookings');
 
     // Analytics derived
     const analytics = useMemo(() => {
-        const apts = roomAppointments;
-        const completedOrConfirmed = apts.filter(a => ['confirmed', 'attended'].includes(a.status));
-        const totalSlots = 16; // 8 hours * 2 slots/hour
-        const utilization = Math.round((completedOrConfirmed.length / totalSlots) * 100);
+        const apts = allAppointments;
+        const completedOrConfirmed = apts.filter(a => ['confirmed', 'attended', 'completed'].includes(a.status));
+        const totalSlots = 16 * 30; // simplistic metric proxy (monthly)
+        const utilization = apts.length > 0 ? Math.round((completedOrConfirmed.length / totalSlots) * 100) : 0;
 
         // Revenue from services
         const revenue = apts.reduce((sum, a) => {
@@ -106,13 +110,15 @@ export default function RoomDetail() {
         // Top practitioner
         const practCount: Record<string, number> = {};
         apts.forEach(a => {
-            practCount[a.practitioner_id] = (practCount[a.practitioner_id] || 0) + 1;
+            if (a.practitioner_id) {
+                practCount[a.practitioner_id] = (practCount[a.practitioner_id] || 0) + 1;
+            }
         });
         const topPractId = Object.entries(practCount).sort(([, a], [, b]) => b - a)[0]?.[0];
         const topPract = practitioners?.find(p => p.id === topPractId);
 
         return { utilization: Math.min(utilization, 100), revenue, topPract };
-    }, [roomAppointments, services, practitioners]);
+    }, [allAppointments, services, practitioners]);
 
     if (!room) {
         return (
@@ -162,7 +168,7 @@ export default function RoomDetail() {
                             <Ban className="h-3.5 w-3.5 mr-1.5" />
                             Block Time
                         </Button>
-                        <Button size="sm" className="h-8 text-[12px]">
+                        <Button size="sm" className="h-8 text-[12px]" onClick={() => setIsEditModalOpen(true)}>
                             <Pencil className="h-3.5 w-3.5 mr-1.5" />
                             Edit Room
                         </Button>
@@ -180,11 +186,11 @@ export default function RoomDetail() {
                             <Clock className="h-4 w-4 text-muted-foreground" />
                             Today's Schedule
                         </h2>
-                        {roomAppointments.length === 0 ? (
+                        {todayAppointments.length === 0 ? (
                             <p className="text-[13px] text-muted-foreground py-4">No appointments scheduled for this room today</p>
                         ) : (
                             <div className="space-y-1">
-                                {roomAppointments.map(apt => {
+                                {todayAppointments.map(apt => {
                                     const pract = practitioners?.find(p => p.id === apt.practitioner_id);
                                     const svc = services?.find(s => s.id === apt.service_id);
                                     const now = new Date();
@@ -219,11 +225,11 @@ export default function RoomDetail() {
                         )}
 
                         {/* Idle time indicator */}
-                        {roomAppointments.length > 0 && roomAppointments.length < 8 && (
+                        {todayAppointments.length > 0 && todayAppointments.length < 8 && (
                             <div className="mt-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50/50 border border-amber-100">
                                 <div className="h-2 w-2 rounded-full bg-amber-400" />
                                 <span className="text-[11px] text-amber-700">
-                                    {16 - roomAppointments.length * 2} idle slots available today — room is {Math.round((roomAppointments.length / 8) * 100)}% booked
+                                    {16 - todayAppointments.length * 2} idle slots available today — room is {Math.round((todayAppointments.length / 8) * 100)}% booked
                                 </span>
                             </div>
                         )}
@@ -263,12 +269,12 @@ export default function RoomDetail() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {roomAppointments.length === 0 ? (
+                                        {allAppointments.length === 0 ? (
                                             <tr>
                                                 <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">No booking history</td>
                                             </tr>
                                         ) : (
-                                            roomAppointments.map(apt => {
+                                            allAppointments.map(apt => {
                                                 const pract = practitioners?.find(p => p.id === apt.practitioner_id);
                                                 const svc = services?.find(s => s.id === apt.service_id);
                                                 return (
@@ -416,6 +422,13 @@ export default function RoomDetail() {
                     </div>
                 </div>
             </div>
+            
+            <EditRoomModal 
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                room={room || null}
+                supportedServices={supportedServices || []}
+            />
         </div>
     );
 }

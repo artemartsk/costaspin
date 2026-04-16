@@ -107,59 +107,80 @@ export default function Patients() {
                     </div>
                 )}
 
-                {/* Table */}
-                <div className="border border-border rounded-lg overflow-hidden">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b border-border bg-muted/30">
-                                <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5">Patient</th>
-                                <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5">Phone</th>
-                                <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5">Visits</th>
-                                <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5">Forms</th>
-                                <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5">Source</th>
-                                <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5">Created</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {isLoading ? (
-                                <tr><td colSpan={6} className="px-4 py-8 text-center text-[13px] text-muted-foreground">Loading…</td></tr>
-                            ) : !filtered.length ? (
-                                <tr><td colSpan={6} className="px-4 py-8 text-center text-[13px] text-muted-foreground">No patients found</td></tr>
-                            ) : (
-                                filtered.map((patient) => (
-                                    <tr key={patient.id} className="border-b border-border/50 last:border-b-0 notion-row-hover cursor-pointer" onClick={() => navigate(`/patients/${patient.id}`)}>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="h-7 w-7">
-                                                    <AvatarFallback className="text-[10px]">
-                                                        {patient.first_name[0]}{patient.last_name?.[0] || ''}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <div>
-                                                    <p className="text-[13px] font-medium">{patient.first_name} {patient.last_name}</p>
-                                                    {patient.email && <p className="text-[11px] text-muted-foreground">{patient.email}</p>}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-[13px] font-mono text-muted-foreground">{patient.phone}</td>
-                                        <td className="px-4 py-3 text-[13px] text-muted-foreground">{patient.visit_count}</td>
-                                        <td className="px-4 py-3">
+                {/* Cards Grid */}
+                {isLoading ? (
+                    <div className="flex items-center justify-center h-40">
+                        <div className="h-5 w-5 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
+                    </div>
+                ) : !filtered.length ? (
+                    <p className="text-[13px] text-muted-foreground text-center py-8">No patients found</p>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filtered.map((patient) => (
+                            <div
+                                key={patient.id}
+                                className="border border-border rounded-lg p-5 notion-row-hover cursor-pointer transition-colors hover:border-foreground/20"
+                                onClick={() => navigate(`/patients/${patient.id}`)}
+                            >
+                                <div className="flex items-center gap-3 mb-4">
+                                    <Avatar className="h-10 w-10">
+                                        <AvatarFallback className="text-[13px] bg-foreground/5">
+                                            {patient.first_name[0]}{patient.last_name?.[0] || ''}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[14px] font-medium truncate">{patient.first_name} {patient.last_name}</p>
+                                        {patient.email ? (
+                                            <p className="text-notion-caption truncate">{patient.email}</p>
+                                        ) : (
+                                            <p className="text-notion-caption text-muted-foreground/60 italic">No email</p>
+                                        )}
+                                    </div>
+                                    <div className="shrink-0 scale-90 origin-top-right">
+                                        {getSourceBadge(patient.source)}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {/* Phone & ID info */}
+                                    <div>
+                                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Contact</p>
+                                        <p className="text-[12px] font-mono text-foreground/80">{patient.phone}</p>
+                                    </div>
+
+                                    {/* Form / Consent Status */}
+                                    <div className="pt-2 border-t border-border/50">
+                                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Onboarding Status</p>
+                                        <div className="flex flex-wrap gap-2">
                                             {patient.forms_completed ? (
-                                                <span className="text-[12px] text-emerald-600">✓ Complete</span>
+                                                <Badge variant="success" className="text-[10px]">Forms: Complete</Badge>
                                             ) : (
-                                                <span className="text-[12px] text-amber-600">○ Pending</span>
+                                                <Badge variant="secondary" className="text-[10px] text-amber-600 bg-amber-50 dark:bg-amber-900/20">Forms: Pending</Badge>
                                             )}
-                                        </td>
-                                        <td className="px-4 py-3">{getSourceBadge(patient.source)}</td>
-                                        <td className="px-4 py-3 text-[13px] text-muted-foreground">
-                                            {patient.created_at ? formatDate(patient.created_at) : '—'}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                            {patient.medical_data_consent ? (
+                                                <Badge variant="success" className="text-[10px]">RGPD: Signed</Badge>
+                                            ) : (
+                                                <Badge variant="secondary" className="text-[10px]">RGPD: Missing</Badge>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Activity Bar */}
+                                    <div className="pt-2 border-t border-border/50">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-[12px] text-muted-foreground">Lifetime Visits</span>
+                                            <span className="text-[12px] font-medium">{patient.visit_count}</span>
+                                        </div>
+                                        <div className="h-1.5 bg-muted rounded-full overflow-hidden opacity-70">
+                                            {/* Just a visual progress bar indicating loyalty; caps at 10 visits visually */}
+                                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min((patient.visit_count / 10) * 100, 100)}%` }} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

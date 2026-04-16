@@ -218,3 +218,37 @@ export interface PractitionerScore {
     gap_fill_score: number // 0-1
     total_score: number   // weighted
 }
+
+export interface ClinicalNote {
+    id: string
+    patient_id: string
+    practitioner_id: string
+    appointment_id: string | null
+    subjective: string | null
+    objective: string | null
+    assessment: string | null
+    plan: string | null
+    created_at: string
+    updated_at: string
+    // Joined relations for display
+    practitioner?: Pick<Practitioner, 'first_name' | 'last_name' | 'profession'>
+}
+
+export interface WhatsAppMessage {
+    role: 'user' | 'assistant'
+    content: string
+}
+
+export interface WhatsAppThread {
+    id: string
+    patient_id: string
+    phone_number: string
+    messages: WhatsAppMessage[]
+    status: 'active' | 'archived' | 'handed_to_human'
+    created_at: string
+    updated_at: string
+}
+
+export type TimelineEvent = 
+    | { type: 'call'; data: CallLog; date: Date }
+    | { type: 'whatsapp'; data: WhatsAppThread; date: Date }

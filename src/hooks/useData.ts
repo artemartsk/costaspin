@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
-import type { Patient, Practitioner, Room, RoomMaintenanceLog, Service, Appointment, CallLog, Location } from '@/types'
+import type { Patient, Practitioner, Room, RoomMaintenanceLog, Service, Appointment, CallLog, Location, ClinicalNote, WhatsAppThread, TimelineEvent } from '@/types'
 
 // ─── FAIL FAST ───────────────────────────────────
 
@@ -132,7 +132,7 @@ export function useRoom(id: string | undefined) {
     })
 }
 
-export function useRoomAppointments(roomId: string | undefined, range: 'today' | 'past' = 'today') {
+export function useRoomAppointments(roomId: string | undefined, range: 'today' | 'past' | 'all' = 'today') {
     return useQuery({
         queryKey: ['room-appointments', roomId, range],
         enabled: !!roomId,
@@ -143,12 +143,18 @@ export function useRoomAppointments(roomId: string | undefined, range: 'today' |
                 .from('appointments')
                 .select('*, patient:patients(*), practitioner:practitioners(*), service:services(*)')
                 .eq('room_id', roomId!)
-                .order('start_time', { ascending: range === 'today' })
-
+                
             if (range === 'today') {
-                query = query.gte('start_time', `${today}T00:00:00`).lte('start_time', `${today}T23:59:59`)
+                query = query.order('start_time', { ascending: true })
+                             .gte('start_time', `${today}T00:00:00`)
+                             .lte('start_time', `${today}T23:59:59`)
+            } else if (range === 'past') {
+                query = query.order('start_time', { ascending: false })
+                             .lt('start_time', `${today}T00:00:00`)
+                             .limit(20)
             } else {
-                query = query.lt('start_time', `${today}T00:00:00`).limit(20)
+                // all
+                query = query.order('start_time', { ascending: false }).limit(50)
             }
 
             const { data, error } = await query
@@ -219,6 +225,64 @@ export function useAddMaintenanceLog() {
         },
         onSuccess: () => qc.invalidateQueries({ queryKey: ['room-maintenance'] }),
     })
+}
+
+export function useUpdateRoomFull() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: async (payload: { 
+            id: string, 
+            room: Partial<Room>, 
+            serviceIds: string[], 
+            maintenanceReason?: string 
+        }) => {
+            assertSupabase();
+            const { id, room, serviceIds, maintenanceReason } = payload;
+            
+            // 1. Update basic room details
+            const { error: roomErr } = await supabase!.from('rooms').update({ 
+                name: room.name, 
+                type: room.type, 
+                capacity: room.capacity, 
+                status: room.status, 
+                equipment: room.equipment,
+                updated_at: new Date().toISOString()
+            }).eq('id', id);
+            
+            if (roomErr) throw roomErr;
+
+            // 2. Wipe and recreate supported services junction
+            const { error: clearErr } = await supabase!.from('room_supported_services').delete().eq('room_id', id);
+            if (clearErr) throw clearErr;
+
+            if (serviceIds.length > 0) {
+                const mapInsert = serviceIds.map(sid => ({ room_id: id, service_id: sid }));
+                const { error: insertErr } = await supabase!.from('room_supported_services').insert(mapInsert);
+                if (insertErr) throw insertErr;
+            }
+
+            // 3. Status related logical actions
+            if (room.status === 'maintenance' && maintenanceReason) {
+                await supabase!.from('room_maintenance_logs').insert({
+                    room_id: id,
+                    note: maintenanceReason,
+                    reported_by: 'Staff',
+                    resolved: false
+                });
+            } else if (room.status === 'available') {
+                // If it came back online, dynamically close any unresolved logs for this room
+                await supabase!.from('room_maintenance_logs').update({ resolved: true }).eq('room_id', id).eq('resolved', false);
+            }
+            
+            return { success: true };
+        },
+        onSuccess: (_, variables) => {
+            qc.invalidateQueries({ queryKey: ['rooms'] });
+            qc.invalidateQueries({ queryKey: ['room', variables.id] });
+            qc.invalidateQueries({ queryKey: ['room-services', variables.id] });
+            qc.invalidateQueries({ queryKey: ['room-maintenance', variables.id] });
+        }
+    });
 }
 
 // ─── SERVICES ────────────────────────────────────
@@ -542,6 +606,85 @@ export function usePractitionerServices(practitionerId: string | undefined) {
             const { data, error } = await supabase!.from('services').select('*')
             if (error) throw error
             return data
+        },
+    })
+}
+
+// ─── CLINICAL NOTES (EMR) ─────────────────────────
+
+export function usePatientClinicalNotes(patientId: string | undefined) {
+    return useQuery({
+        queryKey: ['clinical-notes', patientId],
+        enabled: !!patientId,
+        queryFn: async (): Promise<ClinicalNote[]> => {
+            assertSupabase()
+            const { data, error } = await supabase!
+                .from('clinical_notes')
+                .select('*, practitioner:practitioners(first_name, last_name, profession)')
+                .eq('patient_id', patientId!)
+                .order('created_at', { ascending: false })
+            if (error) throw error
+            return data
+        },
+    })
+}
+
+export function useCreateClinicalNote() {
+    const qc = useQueryClient()
+    return useMutation({
+        mutationFn: async (note: Partial<ClinicalNote>) => {
+            assertSupabase()
+            const { data, error } = await supabase!.from('clinical_notes').insert(note).select().single()
+            if (error) throw error
+            return data
+        },
+        onSuccess: (_, variables) => {
+            qc.invalidateQueries({ queryKey: ['clinical-notes', variables.patient_id] })
+        },
+    })
+}
+
+// ─── COMMUNICATIONS (EMR) ─────────────────────────
+
+export function usePatientCommunications(patientId: string | undefined) {
+    return useQuery({
+        queryKey: ['communications', patientId],
+        enabled: !!patientId,
+        queryFn: async (): Promise<TimelineEvent[]> => {
+            assertSupabase()
+            
+            // Fetch calls and whatsapp threads in parallel
+            const [callData, whatsappData] = await Promise.all([
+                supabase!.from('call_logs').select('*').eq('patient_id', patientId!),
+                supabase!.from('whatsapp_threads').select('*').eq('patient_id', patientId!)
+            ])
+
+            if (callData.error) throw callData.error
+            if (whatsappData.error) throw whatsappData.error
+
+            const timeline: TimelineEvent[] = []
+
+            callData.data.forEach((call: CallLog) => {
+                timeline.push({
+                    type: 'call',
+                    data: call,
+                    date: new Date(call.created_at)
+                })
+            })
+
+            whatsappData.data.forEach((thread: WhatsAppThread) => {
+                timeline.push({
+                    type: 'whatsapp',
+                    data: thread,
+                    // Typically a thread is ongoing, but we use its latest updated_at or created_at
+                    date: new Date(thread.updated_at || thread.created_at)
+                })
+            })
+
+            // Sort descending (newest first)
+            timeline.sort((a, b) => b.date.getTime() - a.date.getTime())
+
+            return timeline
         },
     })
 }

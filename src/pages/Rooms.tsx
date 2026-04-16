@@ -44,7 +44,7 @@ export default function Rooms() {
                             return (
                                 <div
                                     key={room.id}
-                                    className="border border-border rounded-lg p-5 notion-row-hover cursor-pointer transition-shadow hover:shadow-sm"
+                                    className="border border-border bg-card rounded-lg p-5 shadow-sm notion-row-hover cursor-pointer transition-all hover:shadow-md hover:border-foreground/20"
                                     onClick={() => navigate(`/rooms/${room.id}`)}
                                 >
                                     <div className="flex items-center justify-between mb-4">
