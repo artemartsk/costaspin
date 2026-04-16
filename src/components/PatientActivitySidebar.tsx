@@ -37,7 +37,7 @@ export function PatientActivitySidebar({ patientId }: { patientId: string }) {
             </h3>
 
             <ScrollArea className="flex-1 -mx-4 px-4 overflow-y-auto">
-                <div className="space-y-6 pb-12 relative before:absolute before:inset-0 before:ml-[15px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 dark:before:via-slate-800 before:to-transparent">
+                <div className="space-y-6 pb-12 relative before:absolute before:inset-0 before:ml-[23px] before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 dark:before:via-slate-800 before:to-transparent">
                     {activities.map((item, index) => (
                         <ActivityItem key={item.id} item={item} isLast={index === activities.length - 1} />
                     ))}
@@ -81,16 +81,16 @@ function ActivityItem({ item, isLast }: { item: ActivityEvent, isLast: boolean }
     }
 
     return (
-        <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+        <div className="relative flex gap-4 items-start group">
             {/* Dot Node */}
-            <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-white dark:border-slate-950 bg-white dark:bg-slate-950 shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm relative z-10 mx-auto">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-slate-50/50 dark:border-slate-900/20 bg-white dark:bg-slate-950 shrink-0 relative z-10 mx-1.5 mt-0.5">
                 <div className={`flex items-center justify-center w-6 h-6 rounded-full ${iconBg}`}>
                     <Icon className={`h-3 w-3 ${iconColor}`} />
                 </div>
             </div>
 
             {/* Content Box */}
-            <div className={`w-[calc(100%-2.5rem)] md:w-[calc(50%-2.5rem)] py-2 ${!isLast && 'mb-[-8px]'}`}>
+            <div className={`flex-1 py-1 ${!isLast && 'mb-2'}`}>
                 <div className="flex flex-col gap-0.5">
                     <span className="text-[12px] font-medium text-foreground">{item.title}</span>
                     {item.description && (
