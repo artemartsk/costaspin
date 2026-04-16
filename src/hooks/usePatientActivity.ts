@@ -100,6 +100,7 @@ export function usePatientActivity(patientId: string) {
                         description: call.status === 'completed' && call.duration_seconds 
                             ? `${Math.round(call.duration_seconds/60)} min duration`
                             : call.status,
+                        metadata: { recording_url: call.recording_url }
                     });
                 });
             }

@@ -96,6 +96,11 @@ function ActivityItem({ item, isLast }: { item: ActivityEvent, isLast: boolean }
                     {item.description && (
                         <span className="text-[11px] text-muted-foreground line-clamp-2">{item.description}</span>
                     )}
+                    {item.metadata?.recording_url && (
+                        <div className="mt-1 mb-1">
+                            <audio controls className="h-6 w-full max-w-[200px]" src={item.metadata.recording_url} />
+                        </div>
+                    )}
                     <span className="text-[10px] text-muted-foreground/70 flex items-center gap-1 mt-1">
                         {formatDistanceToNow(item.date, { addSuffix: true })}
                         <span className="scale-75">•</span>
