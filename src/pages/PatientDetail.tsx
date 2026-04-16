@@ -12,6 +12,7 @@ import { AppointmentDetailPanel } from '@/components/AppointmentDetailPanel';
 import { ClinicalNotesTab } from '@/components/ClinicalNotesTab';
 import { DocumentsTab } from '@/components/DocumentsTab';
 import { CommunicationsTab } from '@/components/CommunicationsTab';
+import { PatientActivitySidebar } from '@/components/PatientActivitySidebar';
 import { toast } from 'sonner';
 import type { Appointment } from '@/types';
 
@@ -83,9 +84,10 @@ export default function PatientDetail() {
                 </div>
             </div>
 
-            <div className="px-8 py-6">
-                <Tabs defaultValue="overview">
-                    <TabsList className="mb-6">
+            <div className="px-8 py-6 flex flex-col lg:flex-row gap-8 items-start min-h-[calc(100vh-140px)] pb-12">
+                <div className="flex-1 min-w-0 w-full">
+                    <Tabs defaultValue="overview">
+                        <TabsList className="mb-6">
                         <TabsTrigger value="overview">Overview</TabsTrigger>
                         <TabsTrigger value="clinical_records">Clinical Records</TabsTrigger>
                         <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -116,6 +118,14 @@ export default function PatientDetail() {
                         <CommunicationsTab patientId={patient.id} />
                     </TabsContent>
                 </Tabs>
+                </div>
+
+                {/* Right Sidebar - Global Timeline */}
+                <div className="hidden lg:block w-[320px] shrink-0 sticky top-6 h-[calc(100vh-140px)]">
+                    <div className="h-full border border-border rounded-xl bg-slate-50/50 dark:bg-slate-900/20 p-5">
+                        <PatientActivitySidebar patientId={patient.id} />
+                    </div>
+                </div>
             </div>
 
             {/* Appointment Detail Panel */}
