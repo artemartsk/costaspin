@@ -94,7 +94,7 @@ function ActivityItem({ item, isLast }: { item: ActivityEvent, isLast: boolean }
             <div className={`flex-1 py-1 ${!isLast && 'mb-2'}`}>
                 <div className="flex flex-col gap-0.5">
                     <span className="text-[12px] font-medium text-foreground">{item.title}</span>
-                    {item.description && (
+                    {item.description && !item.metadata?.recording_url && (
                         <span className="text-[11px] text-muted-foreground line-clamp-2">{item.description}</span>
                     )}
                     {item.metadata?.recording_url && (

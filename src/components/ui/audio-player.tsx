@@ -67,7 +67,7 @@ export function AudioPlayer({ src }: { src: string }) {
     const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
     return (
-        <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800/80 rounded-lg px-3 py-2 mt-2 max-w-[260px] border border-border/50">
+        <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800/80 rounded-lg px-3 py-2 mt-2 w-full border border-border/50">
             <audio ref={audioRef} src={src} preload="metadata" />
             
             <button 
