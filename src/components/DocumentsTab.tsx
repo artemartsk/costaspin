@@ -18,95 +18,141 @@ export function DocumentsTab({ patient }: { patient: Patient }) {
             const marginX = 20;
             let currentY = 20;
 
-            // Brand Header
+            // ---- HEADER BOX ----
+            doc.setFillColor(30, 41, 59); // slate-800
+            doc.rect(0, 0, 210, 40, 'F');
+            
+            doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(22);
-            doc.text('CostaSpine Clinics', marginX, currentY);
-            
-            // Subtitle
-            currentY += 10;
+            doc.setFontSize(24);
+            doc.text('COSTASPINE', marginX, 22);
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(14);
-            doc.text('Patient Master Consent Record', marginX, currentY);
-            
-            // Line separator
-            currentY += 5;
-            doc.setDrawColor(200, 200, 200);
-            doc.line(marginX, currentY, 190, currentY);
+            doc.setFontSize(11);
+            doc.text('PATIENT MASTER CONSENT RECORD', marginX, 30);
 
-            // Patient Info
-            currentY += 15;
+            // Document Meta (Right aligned in header)
+            doc.setFontSize(10);
+            doc.text(`Ref: CS-${patient.id.substring(0,8).toUpperCase()}`, 190, 22, { align: 'right' });
+            doc.text(`Date: ${format(new Date(), 'dd MMM yyyy')}`, 190, 30, { align: 'right' });
+
+            // Reset text color for body
+            doc.setTextColor(30, 41, 59);
+            currentY = 55;
+
+            // ---- PATIENT SECTION ----
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
-            doc.text('Patient Information', marginX, currentY);
+            doc.text('I. PATIENT IDENTIFICATION', marginX, currentY);
+            currentY += 5;
             
+            doc.setDrawColor(226, 232, 240); // slate-200
+            doc.setFillColor(248, 250, 252); // slate-50
+            doc.roundedRect(marginX, currentY, 170, 35, 2, 2, 'FD');
+
             currentY += 8;
-            doc.setFont('helvetica', 'normal');
+            doc.setFont('helvetica', 'bold');
             doc.setFontSize(10);
-            doc.text(`Name: ${patient.first_name} ${patient.last_name}`, marginX, currentY);
-            doc.text(`Phone: ${patient.phone}`, 100, currentY);
-            currentY += 6;
-            doc.text(`Email: ${patient.email || 'N/A'}`, marginX, currentY);
-            doc.text(`Patient ID: ${patient.id}`, 100, currentY);
-            
-            currentY += 10;
-            doc.line(marginX, currentY, 190, currentY);
+            doc.text('Full Name:', marginX + 5, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${patient.first_name} ${patient.last_name}`, marginX + 35, currentY);
 
-            // Consents Section
-            currentY += 15;
+            doc.setFont('helvetica', 'bold');
+            doc.text('Patient ID:', 110, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${patient.id.substring(0,20)}...`, 135, currentY);
+
+            currentY += 10;
+            doc.setFont('helvetica', 'bold');
+            doc.text('Email:', marginX + 5, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${patient.email || 'N/A'}`, marginX + 35, currentY);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Phone:', 110, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${patient.phone || 'N/A'}`, 135, currentY);
+
+            currentY += 10;
+            doc.setFont('helvetica', 'bold');
+            doc.text('Language:', marginX + 5, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${(patient.language || 'en').toUpperCase()}`, marginX + 35, currentY);
+            
+            // ---- LEGAL SECTION ----
+            currentY += 25;
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
-            doc.text('AEPD / RGPD Consent Declarations', marginX, currentY);
-            
-            // Item 1: Medical Treatment
-            currentY += 10;
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10);
-            doc.text('1. Medical Information & Treatment Consent (Ley 41/2002)', marginX, currentY);
-            
-            currentY += 6;
-            doc.setFont('helvetica', 'normal');
-            const medicalStatus = patient.medical_data_consent ? 'SIGNED / AGREED' : 'NOT SIGNED';
-            const medicalDate = patient.medical_consent_date ? format(new Date(patient.medical_consent_date), 'PPP at p') : 'N/A';
-            doc.text(`Status: ${medicalStatus}`, marginX + 5, currentY);
+            doc.text('II. LEGAL CONSENT & DECLARATIONS', marginX, currentY);
             currentY += 5;
-            doc.text(`Timestamp: ${medicalDate}`, marginX + 5, currentY);
 
-            // Item 2: Data Processing
-            currentY += 10;
-            doc.setFont('helvetica', 'bold');
-            doc.text('2. Personal Data Processing (RGPD / LOPDGDD)', marginX, currentY);
-            
-            currentY += 6;
-            doc.setFont('helvetica', 'normal');
-            const dataStatus = patient.data_processing_consent ? 'SIGNED / AGREED' : 'NOT SIGNED';
-            const dataDate = patient.data_processing_consent_date ? format(new Date(patient.data_processing_consent_date), 'PPP at p') : 'N/A';
-            doc.text(`Status: ${dataStatus}`, marginX + 5, currentY);
-            currentY += 5;
-            doc.text(`Timestamp: ${dataDate}`, marginX + 5, currentY);
-            if(patient.privacy_policy_version) {
-                currentY += 5;
-                doc.text(`Privacy Policy Version: ${patient.privacy_policy_version}`, marginX + 5, currentY);
-            }
+            // Block function
+            const addConsentBlock = (title: string, lawRef: string, statusText: string, dateText: string, yPos: number) => {
+                doc.setDrawColor(226, 232, 240);
+                doc.rect(marginX, yPos, 170, 22);
+                doc.setFillColor(241, 245, 249);
+                doc.rect(marginX, yPos, 170, 8, 'F'); // header background
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text(title, marginX + 3, yPos + 6);
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(8);
+                doc.text(lawRef, 190 - 3, yPos + 6, { align: 'right' });
 
-            // Item 3: Marketing
-            currentY += 10;
-            doc.setFont('helvetica', 'bold');
-            doc.text('3. Marketing & Commercial Communications', marginX, currentY);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.text('Status:', marginX + 3, yPos + 16);
+                
+                if (statusText.includes('SIGNED') || statusText.includes('AGREED')) {
+                    doc.setTextColor(22, 163, 74); // green-600
+                } else {
+                    doc.setTextColor(220, 38, 38); // red-600
+                }
+                doc.text(statusText, marginX + 18, yPos + 16);
+                doc.setTextColor(30, 41, 59);
+
+                doc.setFont('helvetica', 'normal');
+                doc.text(`Recorded: ${dateText}`, 190 - 3, yPos + 16, { align: 'right' });
+            };
+
+            const medicalStatus = patient.medical_data_consent ? 'SIGNED (INTAKE)' : 'NOT SIGNED';
+            const medicalDate = patient.medical_consent_date ? format(new Date(patient.medical_consent_date), 'dd/MM/yyyy HH:mm') : 'N/A';
+            addConsentBlock('Medical Information & Clinical Treatment', 'Ley 41/2002', medicalStatus, medicalDate, currentY);
             
-            currentY += 6;
-            doc.setFont('helvetica', 'normal');
+            currentY += 28;
+            const dataStatus = patient.data_processing_consent ? 'SIGNED (DIGITAL)' : 'NOT SIGNED';
+            const dataDate = patient.data_processing_consent_date ? format(new Date(patient.data_processing_consent_date), 'dd/MM/yyyy HH:mm') : 'N/A';
+            addConsentBlock('Personal Data Processing & Storage', 'RGPD / LOPDGDD', dataStatus, dataDate, currentY);
+
+            currentY += 28;
             const marketingStatus = patient.marketing_consent ? 'AGREED' : 'DECLINED';
-            doc.text(`Status: ${marketingStatus}`, marginX + 5, currentY);
+            addConsentBlock('Commercial & Marketing Communications', 'LSSI-CE', marketingStatus, dataDate, currentY);
 
-            // Footer / Metadata
-            currentY += 30;
+            // ---- AUDIT TRAIL ----
+            currentY += 40;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text('III. DIGITAL AUDIT TRAIL', marginX, currentY);
+            currentY += 5;
+
+            doc.setDrawColor(226, 232, 240);
+            doc.line(marginX, currentY, 190, currentY);
+            currentY += 8;
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text(`This document serves as an immutable PDF extract from the CostaSpine DB.`, marginX, currentY);
+            currentY += 5;
+            doc.text(`Verification ID: ${patient.id}`, marginX, currentY);
+            currentY += 5;
+            doc.text(`System Timestamp: ${format(new Date(), "yyyy-MM-dd'T'HH:mm:ssXXX")}`, marginX, currentY);
+            currentY += 5;
+            doc.text(`Authorized IP / Scope: INTERNAL_CLINIC_SYSTEM`, marginX, currentY);
+
+            // Footer
             doc.setFontSize(8);
             doc.setTextColor(150, 150, 150);
-            const generationDate = format(new Date(), 'PPP at p');
-            doc.text(`This document is electronically generated from the CostaSpine Clinic OS.`, marginX, currentY);
-            currentY += 5;
-            doc.text(`Generated on: ${generationDate}`, marginX, currentY);
+            doc.text(`CostaSpine Clinics • Urb. Elviria, Marbella 29604, Spain • +34 952 123 456`, 105, 285, { align: 'center' });
             
             // Save
             doc.save(`CostaSpine_Consent_${patient.first_name}_${patient.last_name}.pdf`);
