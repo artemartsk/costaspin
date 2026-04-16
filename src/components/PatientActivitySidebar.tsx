@@ -9,6 +9,7 @@ import {
     CheckCircle2
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { AudioPlayer } from '@/components/ui/audio-player';
 
 export function PatientActivitySidebar({ patientId }: { patientId: string }) {
     const { data: activities, isLoading } = usePatientActivity(patientId);
@@ -97,9 +98,7 @@ function ActivityItem({ item, isLast }: { item: ActivityEvent, isLast: boolean }
                         <span className="text-[11px] text-muted-foreground line-clamp-2">{item.description}</span>
                     )}
                     {item.metadata?.recording_url && (
-                        <div className="mt-1 mb-1">
-                            <audio controls className="h-6 w-full max-w-[200px]" src={item.metadata.recording_url} />
-                        </div>
+                        <AudioPlayer src={item.metadata.recording_url} />
                     )}
                     <span className="text-[10px] text-muted-foreground/70 flex items-center gap-1 mt-1">
                         {formatDistanceToNow(item.date, { addSuffix: true })}
