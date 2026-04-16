@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS public.call_logs (
     );
 
     -- Patient 1: Call Logs (Inbound & Outbound)
-    INSERT INTO public.call_logs (patient_id, vapi_call_id, direction, status, started_at, duration_seconds, recording_url, transcript)
+    INSERT INTO public.call_logs (patient_id, vapi_call_id, direction, status, created_at, duration_seconds, recording_url, transcript)
     VALUES (
         '44444444-4444-4444-4444-444444444444',
         'call_inbound_xyz',
@@ -134,7 +134,7 @@ Patient: Not right now, I will check your website first. Thanks.
 CostaSpine Bot: No problem! You can book directly on our website or call back anytime. Have a great day.'
     );
 
-    INSERT INTO public.call_logs (patient_id, vapi_call_id, direction, status, started_at, duration_seconds, recording_url, transcript)
+    INSERT INTO public.call_logs (patient_id, vapi_call_id, direction, status, created_at, duration_seconds, recording_url, transcript)
     VALUES (
         '44444444-4444-4444-4444-444444444444',
         'call_outbound_qwe',

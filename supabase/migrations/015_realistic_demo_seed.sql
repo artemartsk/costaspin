@@ -48,7 +48,7 @@ VALUES (
 );
 
 -- Call Logs
-INSERT INTO public.call_logs (patient_id, vapi_call_id, direction, status, started_at, duration_seconds, recording_url, transcript)
+INSERT INTO public.call_logs (patient_id, vapi_call_id, direction, status, created_at, duration_seconds, recording_url, transcript)
 VALUES (
     '88888888-8888-8888-8888-888888888888',
     'call_inbound_sterling',
