@@ -64,12 +64,14 @@ export function usePatientActivity(patientId: string) {
             // 2. Appointments
             if (appointments) {
                 appointments.forEach(apt => {
+                    const isUpcoming = new Date(apt.start_time) > new Date();
+
                     events.push({
                         id: `apt-${apt.id}`,
                         type: 'appointment',
-                        date: new Date(apt.created_at),
-                        title: `Appointment Booked`,
-                        description: apt.service?.name || 'Service',
+                        date: new Date(apt.start_time),
+                        title: isUpcoming ? `Upcoming Visit` : `Past Visit`,
+                        description: apt.service?.name || `Status: ${apt.status}`,
                         metadata: { status: apt.status, start_time: apt.start_time }
                     });
                 });
