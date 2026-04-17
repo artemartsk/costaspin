@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { FileText, Plus, UserCircle2 } from 'lucide-react';
+import { FileText, Plus, UserCircle2, Pencil } from 'lucide-react';
 
 import {
     Dialog,
@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 
-import { usePatientClinicalNotes, useCreateClinicalNote, usePractitioners } from '@/hooks/useData';
+import { usePatientClinicalNotes, useCreateClinicalNote, useUpdateClinicalNote, usePractitioners } from '@/hooks/useData';
 
 const soapSchema = z.object({
     practitioner_id: z.string().min(1, 'Practitioner is required'),
@@ -51,8 +51,10 @@ export function ClinicalNotesTab({ patientId }: { patientId: string }) {
     const { data: notes, isLoading: notesLoading } = usePatientClinicalNotes(patientId);
     const { data: practitioners, isLoading: practLoading } = usePractitioners();
     const { mutate: createNote, isPending: isCreating } = useCreateClinicalNote();
+    const { mutate: updateNote, isPending: isUpdating } = useUpdateClinicalNote();
     
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
 
     const form = useForm<SoapFormData>({
         resolver: zodResolver(soapSchema),
@@ -65,24 +67,57 @@ export function ClinicalNotesTab({ patientId }: { patientId: string }) {
         }
     });
 
+    const handleEditNote = (note: any) => {
+        setEditingNoteId(note.id);
+        form.reset({
+            practitioner_id: note.practitioner_id,
+            subjective: note.subjective || '',
+            objective: note.objective || '',
+            assessment: note.assessment || '',
+            plan: note.plan || '',
+        });
+        setIsDialogOpen(true);
+    };
+
     const onSubmit = (data: SoapFormData) => {
-        createNote({
-            patient_id: patientId,
+        const payload = {
             practitioner_id: data.practitioner_id,
             subjective: data.subjective || null,
             objective: data.objective || null,
             assessment: data.assessment || null,
             plan: data.plan || null,
-        }, {
-            onSuccess: () => {
-                toast.success('Clinical note added successfully');
-                setIsDialogOpen(false);
-                form.reset();
-            },
-            onError: (err) => {
-                toast.error('Failed to save note', { description: err.message });
-            }
-        });
+        };
+
+        if (editingNoteId) {
+            updateNote({
+                id: editingNoteId,
+                updates: payload
+            }, {
+                onSuccess: () => {
+                    toast.success('Clinical note updated successfully');
+                    setIsDialogOpen(false);
+                    setEditingNoteId(null);
+                    form.reset();
+                },
+                onError: (err) => {
+                    toast.error('Failed to update note', { description: err.message });
+                }
+            });
+        } else {
+            createNote({
+                patient_id: patientId,
+                ...payload
+            }, {
+                onSuccess: () => {
+                    toast.success('Clinical note added successfully');
+                    setIsDialogOpen(false);
+                    form.reset();
+                },
+                onError: (err) => {
+                    toast.error('Failed to save note', { description: err.message });
+                }
+            });
+        }
     };
 
     if (notesLoading) {
@@ -104,7 +139,10 @@ export function ClinicalNotesTab({ patientId }: { patientId: string }) {
                 
                 <Dialog open={isDialogOpen} onOpenChange={(open) => {
                     setIsDialogOpen(open);
-                    if(!open) form.reset();
+                    if(!open) {
+                        form.reset();
+                        setEditingNoteId(null);
+                    }
                 }}>
                     <DialogTrigger asChild>
                         <Button size="sm" className="h-8 text-[12px]">
@@ -211,7 +249,12 @@ export function ClinicalNotesTab({ patientId }: { patientId: string }) {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {notes?.map(note => (
+                    {notes?.map(note => {
+                        const noteAgeMs = new Date().getTime() - new Date(note.created_at).getTime();
+                        const isEditable = noteAgeMs < 24 * 60 * 60 * 1000;
+                        const isEdited = note.updated_at && new Date(note.updated_at).getTime() > new Date(note.created_at).getTime();
+
+                        return (
                         <Card key={note.id} className="shadow-none border-border">
                             <CardContent className="p-5">
                                 <div className="flex items-start justify-between mb-4">
@@ -222,13 +265,27 @@ export function ClinicalNotesTab({ patientId }: { patientId: string }) {
                                         <div>
                                             <p className="text-[13px] font-semibold">
                                                 Dr. {note.practitioner?.first_name} {note.practitioner?.last_name}
+                                                {isEdited && <span className="text-[10px] text-muted-foreground ml-2">(Edited)</span>}
                                             </p>
                                             <p className="text-[11px] text-muted-foreground">
                                                 {format(new Date(note.created_at), 'PPP at p')}
                                             </p>
                                         </div>
                                     </div>
-                                    <Badge variant="outline" className="text-[10px] bg-muted/30">Clinical Record</Badge>
+                                    <div className="flex items-center gap-2">
+                                        {isEditable && (
+                                            <Button 
+                                                variant="outline" 
+                                                size="icon" 
+                                                className="h-7 w-7 text-muted-foreground hover:text-primary transition-colors duration-200 border-border bg-card shadow-sm" 
+                                                onClick={() => handleEditNote(note)}
+                                                title="Edit Note"
+                                            >
+                                                <Pencil className="h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
+                                        <Badge variant="outline" className="text-[10px] bg-muted/30">Clinical Record</Badge>
+                                    </div>
                                 </div>
 
                                 <div className="text-[13px] space-y-4 pt-2">
@@ -259,7 +316,8 @@ export function ClinicalNotesTab({ patientId }: { patientId: string }) {
                                 </div>
                             </CardContent>
                         </Card>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>

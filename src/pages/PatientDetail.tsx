@@ -15,12 +15,24 @@ import { CommunicationsTab } from '@/components/CommunicationsTab';
 import { PatientActivitySidebar } from '@/components/PatientActivitySidebar';
 import { toast } from 'sonner';
 import type { Appointment } from '@/types';
+import { ActivityEvent } from '@/hooks/usePatientActivity';
 
 export default function PatientDetail() {
     const { id } = useParams<{ id: string }>();
     const { data: patients, isLoading: pLoading } = usePatients();
     const { data: allAppointments, isLoading: aLoading } = useAppointments();
+    
+    // UI State
     const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
+    const [activeTab, setActiveTab] = useState('overview');
+    const [selectedActivity, setSelectedActivity] = useState<ActivityEvent | null>(null);
+
+    const handleActivitySelect = (activity: ActivityEvent) => {
+        if (activity.type === 'call' || activity.type === 'whatsapp') {
+            setSelectedActivity(activity);
+            setActiveTab('communications');
+        }
+    };
 
     const patient = patients?.find(p => p.id === id);
     const appointments = (allAppointments || []).filter(a => a.patient_id === id);
@@ -86,7 +98,7 @@ export default function PatientDetail() {
 
             <div className="px-8 py-6 flex flex-col lg:flex-row gap-8 items-start min-h-[calc(100vh-140px)] pb-12">
                 <div className="flex-1 min-w-0 w-full">
-                    <Tabs defaultValue="overview">
+                    <Tabs value={activeTab} onValueChange={setActiveTab}>
                         <TabsList className="mb-6">
                         <TabsTrigger value="overview">Overview</TabsTrigger>
                         <TabsTrigger value="clinical_records">Clinical Records</TabsTrigger>
@@ -115,7 +127,7 @@ export default function PatientDetail() {
                     </TabsContent>
 
                     <TabsContent value="communications">
-                        <CommunicationsTab patientId={patient.id} />
+                        <CommunicationsTab patientId={patient.id} selectedActivity={selectedActivity} />
                     </TabsContent>
                 </Tabs>
                 </div>
@@ -123,7 +135,7 @@ export default function PatientDetail() {
                 {/* Right Sidebar - Global Timeline */}
                 <div className="hidden lg:block w-[320px] shrink-0 sticky top-6 h-[calc(100vh-140px)]">
                     <div className="h-full border border-border rounded-xl bg-slate-50/50 dark:bg-slate-900/20 p-5">
-                        <PatientActivitySidebar patientId={patient.id} />
+                        <PatientActivitySidebar patientId={patient.id} onActivitySelect={handleActivitySelect} />
                     </div>
                 </div>
             </div>

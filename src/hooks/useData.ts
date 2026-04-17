@@ -644,6 +644,21 @@ export function useCreateClinicalNote() {
     })
 }
 
+export function useUpdateClinicalNote() {
+    const qc = useQueryClient()
+    return useMutation({
+        mutationFn: async ({ id, updates }: { id: string, updates: Partial<ClinicalNote> }) => {
+            assertSupabase()
+            const { data, error } = await supabase!.from('clinical_notes').update(updates).eq('id', id).select().single()
+            if (error) throw error
+            return data
+        },
+        onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ['clinical-notes', data.patient_id] })
+        },
+    })
+}
+
 // ─── COMMUNICATIONS (EMR) ─────────────────────────
 
 export function usePatientCommunications(patientId: string | undefined) {
@@ -655,8 +670,8 @@ export function usePatientCommunications(patientId: string | undefined) {
             
             // Fetch calls and whatsapp threads in parallel
             const [callData, whatsappData] = await Promise.all([
-                supabase!.from('call_logs').select('*').eq('patient_id', patientId!),
-                supabase!.from('whatsapp_threads').select('*').eq('patient_id', patientId!)
+                supabase!.from('call_logs').select('*').eq('patient_id', patientId!).order('created_at', { ascending: false }).limit(50),
+                supabase!.from('whatsapp_threads').select('*').eq('patient_id', patientId!).order('updated_at', { ascending: false }).limit(50)
             ])
 
             if (callData.error) throw callData.error

@@ -68,8 +68,8 @@ export default function Patients() {
 
             <div className="px-8 py-5">
                 {/* Toolbar */}
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="relative flex-1 max-w-sm">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="relative w-full max-w-sm">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                         <Input
                             placeholder="Search patients..."
@@ -78,19 +78,21 @@ export default function Patients() {
                             className="pl-9 h-8 text-[13px] bg-muted/30 border-transparent focus:bg-background focus:border-border"
                         />
                     </div>
-                    <Button variant="outline" size="sm" className="h-8 text-[12px]">
-                        <Filter className="h-3 w-3 mr-1.5" />
-                        Filter
-                    </Button>
-                    <Button size="sm" className="h-8 text-[12px]" onClick={() => setShowAdd(!showAdd)}>
-                        <Plus className="h-3.5 w-3.5 mr-1.5" />
-                        Add Patient
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        <Button variant="outline" size="sm" className="h-8 text-[12px]">
+                            <Filter className="h-3 w-3 mr-1.5" />
+                            Filter
+                        </Button>
+                        <Button size="sm" className="h-8 text-[12px]" onClick={() => setShowAdd(!showAdd)}>
+                            <Plus className="h-3.5 w-3.5 mr-1.5" />
+                            Add Patient
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Inline Add Form */}
                 {showAdd && (
-                    <div className="border border-border rounded-lg p-4 mb-4 bg-muted/10">
+                    <div className="border border-border rounded-lg p-4 mb-4 bg-muted/10 animate-in slide-in-from-top-2 duration-200">
                         <p className="text-[13px] font-medium mb-3">New Patient</p>
                         <div className="grid grid-cols-4 gap-3 mb-3">
                             <Input placeholder="First name *" value={newFirst} onChange={(e) => setNewFirst(e.target.value)} className="h-8 text-[13px]" />
@@ -107,78 +109,82 @@ export default function Patients() {
                     </div>
                 )}
 
-                {/* Cards Grid */}
+                {/* Table View */}
                 {isLoading ? (
                     <div className="flex items-center justify-center h-40">
                         <div className="h-5 w-5 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
                     </div>
                 ) : !filtered.length ? (
-                    <p className="text-[13px] text-muted-foreground text-center py-8">No patients found</p>
+                    <div className="border border-border rounded-lg border-dashed">
+                        <p className="text-[13px] text-muted-foreground text-center py-12">No patients found matches your search.</p>
+                    </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filtered.map((patient) => (
-                            <div
-                                key={patient.id}
-                                className="border border-border rounded-lg p-5 notion-row-hover cursor-pointer transition-colors hover:border-foreground/20"
-                                onClick={() => navigate(`/patients/${patient.id}`)}
-                            >
-                                <div className="flex items-center gap-3 mb-4">
-                                    <Avatar className="h-10 w-10">
-                                        <AvatarFallback className="text-[13px] bg-foreground/5">
-                                            {patient.first_name[0]}{patient.last_name?.[0] || ''}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[14px] font-medium truncate">{patient.first_name} {patient.last_name}</p>
-                                        {patient.email ? (
-                                            <p className="text-notion-caption truncate">{patient.email}</p>
-                                        ) : (
-                                            <p className="text-notion-caption text-muted-foreground/60 italic">No email</p>
-                                        )}
-                                    </div>
-                                    <div className="shrink-0 scale-90 origin-top-right">
-                                        {getSourceBadge(patient.source)}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                    {/* Phone & ID info */}
-                                    <div>
-                                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Contact</p>
-                                        <p className="text-[12px] font-mono text-foreground/80">{patient.phone}</p>
-                                    </div>
-
-                                    {/* Form / Consent Status */}
-                                    <div className="pt-2 border-t border-border/50">
-                                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Onboarding Status</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {patient.forms_completed ? (
-                                                <Badge variant="success" className="text-[10px]">Forms: Complete</Badge>
-                                            ) : (
-                                                <Badge variant="secondary" className="text-[10px] text-amber-600 bg-amber-50 dark:bg-amber-900/20">Forms: Pending</Badge>
-                                            )}
-                                            {patient.medical_data_consent ? (
-                                                <Badge variant="success" className="text-[10px]">RGPD: Signed</Badge>
-                                            ) : (
-                                                <Badge variant="secondary" className="text-[10px]">RGPD: Missing</Badge>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Activity Bar */}
-                                    <div className="pt-2 border-t border-border/50">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-[12px] text-muted-foreground">Lifetime Visits</span>
-                                            <span className="text-[12px] font-medium">{patient.visit_count}</span>
-                                        </div>
-                                        <div className="h-1.5 bg-muted rounded-full overflow-hidden opacity-70">
-                                            {/* Just a visual progress bar indicating loyalty; caps at 10 visits visually */}
-                                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min((patient.visit_count / 10) * 100, 100)}%` }} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="border border-border rounded-lg overflow-hidden bg-card text-card-foreground">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-[13px] text-left border-collapse">
+                                <thead className="bg-muted/30 text-muted-foreground">
+                                    <tr className="border-b border-border">
+                                        <th className="px-5 py-3 font-medium">Patient</th>
+                                        <th className="px-5 py-3 font-medium">Contact</th>
+                                        <th className="px-5 py-3 font-medium">Source</th>
+                                        <th className="px-5 py-3 font-medium">Status</th>
+                                        <th className="px-5 py-3 font-medium text-right">Visits</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filtered.map((patient) => (
+                                        <tr 
+                                            key={patient.id} 
+                                            className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                                            onClick={() => navigate(`/patients/${patient.id}`)}
+                                        >
+                                            <td className="px-5 py-3.5 align-middle">
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="h-8 w-8">
+                                                        <AvatarFallback className="text-[11px] bg-foreground/5 text-foreground/80 font-medium tracking-wide">
+                                                            {patient.first_name[0]}{patient.last_name?.[0] || ''}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div>
+                                                        <p className="font-medium text-[13px]">{patient.first_name} {patient.last_name}</p>
+                                                        {patient.email ? (
+                                                            <p className="text-[11px] text-muted-foreground">{patient.email}</p>
+                                                        ) : (
+                                                            <p className="text-[11px] text-muted-foreground/50 italic">No email</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-3.5 align-middle">
+                                                <span className="font-mono text-[12px] text-foreground/80">{patient.phone}</span>
+                                            </td>
+                                            <td className="px-5 py-3.5 align-middle">
+                                                <div className="scale-90 origin-left">
+                                                    {getSourceBadge(patient.source)}
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-3.5 align-middle">
+                                                <div className="flex flex-col gap-1.5 items-start">
+                                                    {patient.forms_completed ? (
+                                                        <Badge variant="success" className="text-[9px] px-1.5 py-0 h-4">Forms: Complete</Badge>
+                                                    ) : (
+                                                        <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 text-amber-600 bg-amber-50 dark:bg-amber-900/20">Forms: Pending</Badge>
+                                                    )}
+                                                    {patient.medical_data_consent ? (
+                                                        <Badge variant="success" className="text-[9px] px-1.5 py-0 h-4">RGPD: Signed</Badge>
+                                                    ) : (
+                                                        <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">RGPD: Missing</Badge>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-3.5 align-middle text-right">
+                                                <span className="font-medium text-[13px] text-foreground/90">{patient.visit_count}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
             </div>

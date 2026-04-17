@@ -1,52 +1,71 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { jsPDF } from 'jspdf';
-import { FileText, Download, CheckCircle2, Clock } from 'lucide-react';
+import { FileText, Download, CheckCircle2, Clock, FileWarning } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import type { Patient } from '@/types';
+import { jsPDF } from 'jspdf';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 
 export function DocumentsTab({ patient }: { patient: Patient }) {
-    const [isGenerating, setIsGenerating] = useState(false);
+    const [documents, setDocuments] = useState<any[]>([]);
+    const [isLoadingDocs, setIsLoadingDocs] = useState(true);
 
-    const generateGdprPdf = () => {
-        setIsGenerating(true);
+    useEffect(() => {
+        const fetchDocs = async () => {
+            setIsLoadingDocs(true);
+            const { data, error } = await supabase!
+                .from('patient_documents')
+                .select('*')
+                .eq('patient_id', patient.id)
+                .order('created_at', { ascending: false });
+
+            if (!error && data) {
+                setDocuments(data);
+            }
+            setIsLoadingDocs(false);
+        };
+        fetchDocs();
+    }, [patient.id]);
+
+    const [isGeneratingLegacy, setIsGeneratingLegacy] = useState(false);
+
+    const handleDownloadStoredPdf = async (path: string) => {
+        if (path.startsWith('http')) {
+            window.open(path, '_blank');
+            return;
+        }
+        
+        const { data, error } = await supabase!.storage.from('patient_documents').createSignedUrl(path, 60);
+        if (error || !data) {
+            console.error("Error generating signed URL:", error);
+            alert("Failed to access secure document. Please try again.");
+            return;
+        }
+        window.open(data.signedUrl, '_blank');
+    };
+
+    const handleGenerateLegacyRecord = async () => {
+        setIsGeneratingLegacy(true);
         try {
             const doc = new jsPDF();
-            const marginX = 20;
             let currentY = 20;
+            const marginX = 15;
 
-            // ---- HEADER BOX ----
-            doc.setFillColor(30, 41, 59); // slate-800
-            doc.rect(0, 0, 210, 40, 'F');
-            
+            // Header
+            doc.setFillColor(30, 41, 59);
+            doc.rect(0, 0, 210, 30, 'F');
             doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(24);
-            doc.text('COSTASPINE', marginX, 22);
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(11);
-            doc.text('PATIENT MASTER CONSENT RECORD', marginX, 30);
+            doc.setFontSize(16);
+            doc.text('MASTER PATIENT RECORD', marginX, 20);
 
-            // Document Meta (Right aligned in header)
-            doc.setFontSize(10);
-            doc.text(`Ref: CS-${patient.id.substring(0,8).toUpperCase()}`, 190, 22, { align: 'right' });
-            doc.text(`Date: ${format(new Date(), 'dd MMM yyyy')}`, 190, 30, { align: 'right' });
-
-            // Reset text color for body
+            // Metadata box
+            currentY = 40;
             doc.setTextColor(30, 41, 59);
-            currentY = 55;
-
-            // ---- PATIENT SECTION ----
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(12);
-            doc.text('I. PATIENT IDENTIFICATION', marginX, currentY);
-            currentY += 5;
-            
-            doc.setDrawColor(226, 232, 240); // slate-200
-            doc.setFillColor(248, 250, 252); // slate-50
+            doc.setFillColor(248, 250, 252);
             doc.roundedRect(marginX, currentY, 170, 35, 2, 2, 'FD');
 
             currentY += 8;
@@ -85,34 +104,34 @@ export function DocumentsTab({ patient }: { patient: Patient }) {
             doc.text('II. LEGAL CONSENT & DECLARATIONS', marginX, currentY);
             currentY += 5;
 
-            // Block function
             const addConsentBlock = (title: string, lawRef: string, statusText: string, dateText: string, yPos: number) => {
                 doc.setDrawColor(226, 232, 240);
                 doc.rect(marginX, yPos, 170, 22);
                 doc.setFillColor(241, 245, 249);
-                doc.rect(marginX, yPos, 170, 8, 'F'); // header background
+                doc.rect(marginX, yPos, 170, 8, 'F');
                 
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(10);
                 doc.text(title, marginX + 3, yPos + 6);
                 doc.setFont('helvetica', 'italic');
                 doc.setFontSize(8);
-                doc.text(lawRef, 190 - 3, yPos + 6, { align: 'right' });
+                // Right edge is marginX + 170 = 185. Padding 3 = 182.
+                doc.text(lawRef, marginX + 167, yPos + 6, { align: 'right' });
 
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(9);
                 doc.text('Status:', marginX + 3, yPos + 16);
                 
                 if (statusText.includes('SIGNED') || statusText.includes('AGREED')) {
-                    doc.setTextColor(22, 163, 74); // green-600
+                    doc.setTextColor(22, 163, 74);
                 } else {
-                    doc.setTextColor(220, 38, 38); // red-600
+                    doc.setTextColor(220, 38, 38);
                 }
                 doc.text(statusText, marginX + 18, yPos + 16);
                 doc.setTextColor(30, 41, 59);
 
                 doc.setFont('helvetica', 'normal');
-                doc.text(`Recorded: ${dateText}`, 190 - 3, yPos + 16, { align: 'right' });
+                doc.text(`Recorded: ${dateText}`, marginX + 167, yPos + 16, { align: 'right' });
             };
 
             const medicalStatus = patient.medical_data_consent ? 'SIGNED (INTAKE)' : 'NOT SIGNED';
@@ -139,31 +158,63 @@ export function DocumentsTab({ patient }: { patient: Patient }) {
             doc.line(marginX, currentY, 190, currentY);
             currentY += 8;
 
+            const tStamp = new Date();
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(9);
             doc.text(`This document serves as an immutable PDF extract from the CostaSpine DB.`, marginX, currentY);
             currentY += 5;
             doc.text(`Verification ID: ${patient.id}`, marginX, currentY);
             currentY += 5;
-            doc.text(`System Timestamp: ${format(new Date(), "yyyy-MM-dd'T'HH:mm:ssXXX")}`, marginX, currentY);
+            doc.text(`System Timestamp: ${format(tStamp, "yyyy-MM-dd'T'HH:mm:ssXXX")}`, marginX, currentY);
             currentY += 5;
-            doc.text(`Authorized IP / Scope: INTERNAL_CLINIC_SYSTEM`, marginX, currentY);
+            doc.text(`Authorized IP / Scope: INTERNAL_CLINIC_SYSTEM (Legacy Generation)`, marginX, currentY);
 
             // Footer
             doc.setFontSize(8);
             doc.setTextColor(150, 150, 150);
             doc.text(`CostaSpine Clinics • Urb. Elviria, Marbella 29604, Spain • +34 952 123 456`, 105, 285, { align: 'center' });
             
-            // Save
-            doc.save(`CostaSpine_Consent_${patient.first_name}_${patient.last_name}.pdf`);
+            // Upload to Supabase Storage
+            const pdfBlob = doc.output('blob');
+            const fileName = `${patient.id}/legacy_consent_${tStamp.getTime()}.pdf`;
+            
+            const { data: uploadData, error: uploadError } = await supabase!.storage
+                .from('patient_documents')
+                .upload(fileName, pdfBlob, {
+                    contentType: 'application/pdf',
+                    cacheControl: '31536000',
+                    upsert: false
+                });
+
+            if (uploadError) throw uploadError;
+
+            if (uploadData) {
+                const filePath = uploadData.path;
+                
+                const { data: newDoc, error: insertError } = await supabase!.from('patient_documents').insert({
+                    patient_id: patient.id,
+                    type: 'consent',
+                    signed_at: tStamp.toISOString(),
+                    pdf_url: filePath,
+                    data: { generation: 'legacy_recovery', signed_name: `${patient.first_name} ${patient.last_name}` }
+                }).select().single();
+
+                if (insertError) throw insertError;
+                
+                if (newDoc) {
+                    setDocuments(prev => [newDoc, ...prev]);
+                }
+            }
         } catch (error) {
-            console.error('Error generating PDF:', error);
+            console.error("Failed to generate legacy record", error);
+            alert("Failed to generate and save record. Please try again.");
         } finally {
-            setTimeout(() => setIsGenerating(false), 500); // small delay for UX
+            setIsGeneratingLegacy(false);
         }
     };
 
     const isSigned = patient.data_processing_consent || patient.medical_data_consent;
+    const latestConsentDoc = documents.find(d => d.type === 'consent');
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
@@ -178,18 +229,51 @@ export function DocumentsTab({ patient }: { patient: Patient }) {
                     </p>
                 </div>
                 
-                {isSigned && (
+                {latestConsentDoc ? (
                     <Button 
                         size="sm" 
+                        variant="default"
                         className="h-8 text-[12px]" 
-                        onClick={generateGdprPdf}
-                        disabled={isGenerating}
+                        onClick={() => handleDownloadStoredPdf(latestConsentDoc.pdf_url)}
                     >
                         <Download className="h-3.5 w-3.5 mr-1.5" />
-                        {isGenerating ? 'Generating...' : 'Master Consent Record (PDF)'}
+                        Download Immutable Record (PDF)
                     </Button>
-                )}
+                ) : isSigned ? (
+                    <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="h-8 text-[12px] border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40" 
+                        onClick={handleGenerateLegacyRecord}
+                        disabled={isGeneratingLegacy}
+                    >
+                        {isGeneratingLegacy ? (
+                            <>
+                                <div className="h-3.5 w-3.5 mr-1.5 animate-spin rounded-full border-2 border-amber-800 border-t-transparent dark:border-amber-400"></div>
+                                Generating...
+                            </>
+                        ) : (
+                            <>
+                                <FileWarning className="h-3.5 w-3.5 mr-1.5" />
+                                Generate Legacy Record
+                            </>
+                        )}
+                    </Button>
+                ) : null}
             </div>
+
+            {/* If signed but no URL exists, warn the user */}
+            {isSigned && !latestConsentDoc && !isLoadingDocs && (
+                <div className="p-4 bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50 rounded-lg flex items-start gap-3 mb-6">
+                    <FileWarning className="h-4 w-4 text-amber-600 dark:text-amber-500 mt-0.5 shrink-0" />
+                    <div>
+                        <h4 className="text-[13px] font-medium text-amber-900 dark:text-amber-400">Legacy Consent Record</h4>
+                        <p className="text-[12px] text-amber-800/80 dark:text-amber-500/80 mt-1 max-w-[90%]">
+                            This patient signed their forms before the immutable PDF storage system was implemented. You can generate a fallback PDF report based on their recorded consent timestamps.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             <div className="space-y-4">
                 {/* Data Processing Document Card */}

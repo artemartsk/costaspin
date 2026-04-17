@@ -11,68 +11,32 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { usePatientCommunications } from '@/hooks/useData';
+import { ActivityEvent } from '@/hooks/usePatientActivity';
 
-export function CommunicationsTab({ patientId }: { patientId: string }) {
-    const { data: timeline, isLoading } = usePatientCommunications(patientId);
-
-    if (isLoading) {
-        return <div className="p-8 text-center text-sm text-muted-foreground">Loading timeline...</div>;
-    }
-
-    if (!timeline?.length) {
+export function CommunicationsTab({ patientId, selectedActivity }: { patientId: string, selectedActivity?: ActivityEvent | null }) {
+    if (!selectedActivity) {
         return (
-            <div className="border border-dashed border-border rounded-lg p-12 text-center text-muted-foreground flex flex-col items-center justify-center h-[200px]">
+            <div className="border border-dashed border-border rounded-lg p-12 text-center text-muted-foreground flex flex-col items-center justify-center h-[300px]">
                 <MessageCircle className="h-8 w-8 mb-4 opacity-50" />
-                <p className="text-[13px]">No communications recorded yet.</p>
+                <p className="text-[14px] font-medium text-foreground">No communication selected</p>
+                <p className="text-[12px] mt-1">Select a call or WhatsApp discussion from the timeline on the right to view details.</p>
             </div>
         );
     }
 
-    // Grouping by date
-    const groupedByDate: Record<string, typeof timeline> = {};
-    timeline.forEach(event => {
-        const dateStr = format(event.date, 'dd MMMM yyyy');
-        if (!groupedByDate[dateStr]) groupedByDate[dateStr] = [];
-        groupedByDate[dateStr].push(event);
-    });
+    const { type, date, metadata } = selectedActivity;
+    const tTime = format(date, 'HH:mm');
+    const rawData = metadata?.raw_data;
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-300">
-            {Object.entries(groupedByDate).map(([dateStr, events]) => (
-                <div key={dateStr} className="space-y-6">
-                    {/* Date Header */}
-                    <div className="sticky top-0 z-10 bg-background/95 backdrop-blur py-2">
-                        <Badge variant="outline" className="text-[11px] font-medium px-3 py-1 bg-muted/30">
-                            {dateStr}
-                        </Badge>
-                    </div>
-
-                    <div className="relative pl-6 ml-4 border-l-2 border-slate-200 dark:border-slate-800 space-y-8">
-                        {events.map((event, i) => {
-                            const isCall = event.type === 'call';
-                            const Icon = isCall ? Phone : MessageCircle;
-                            const tTime = format(event.date, 'HH:mm');
-                            
-                            return (
-                                <div key={`${event.type}-${i}`} className="relative">
-                                    {/* Timeline Node Icon */}
-                                    <div className="absolute -left-[35px] top-1 h-7 w-7 rounded-full border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex items-center justify-center shadow-sm">
-                                        <Icon className={`h-3 w-3 ${isCall ? 'text-primary' : 'text-emerald-500'}`} />
-                                    </div>
-
-                                    {/* Content Card */}
-                                    {isCall ? (
-                                        <CallNode call={event.data as any} time={tTime} />
-                                    ) : (
-                                        <WhatsAppNode thread={event.data as any} time={tTime} />
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            ))}
+        <div className="animate-in fade-in duration-300">
+            {type === 'call' ? (
+                <CallNode call={rawData as any} time={tTime} />
+            ) : type === 'whatsapp' ? (
+                <WhatsAppNode thread={rawData as any} time={tTime} />
+            ) : (
+                <div className="text-sm text-muted-foreground">Detailed view not supported for this activity type.</div>
+            )}
         </div>
     );
 }

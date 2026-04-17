@@ -11,7 +11,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AudioPlayer } from '@/components/ui/audio-player';
 
-export function PatientActivitySidebar({ patientId }: { patientId: string }) {
+export function PatientActivitySidebar({ patientId, onActivitySelect }: { patientId: string, onActivitySelect?: (ev: ActivityEvent) => void }) {
     const { data: activities, isLoading } = usePatientActivity(patientId);
 
     if (isLoading) {
@@ -40,7 +40,7 @@ export function PatientActivitySidebar({ patientId }: { patientId: string }) {
             <ScrollArea className="flex-1 -mx-4 px-4 overflow-y-auto">
                 <div className="space-y-6 pb-12 relative before:absolute before:inset-0 before:ml-[23px] before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 dark:before:via-slate-800 before:to-transparent">
                     {activities.map((item, index) => (
-                        <ActivityItem key={item.id} item={item} isLast={index === activities.length - 1} />
+                        <ActivityItem key={item.id} item={item} isLast={index === activities.length - 1} onClick={() => onActivitySelect?.(item)} />
                     ))}
                 </div>
             </ScrollArea>
@@ -48,7 +48,7 @@ export function PatientActivitySidebar({ patientId }: { patientId: string }) {
     );
 }
 
-function ActivityItem({ item, isLast }: { item: ActivityEvent, isLast: boolean }) {
+function ActivityItem({ item, isLast, onClick }: { item: ActivityEvent, isLast: boolean, onClick: () => void }) {
     let Icon = User;
     let iconColor = 'text-slate-500';
     let iconBg = 'bg-slate-100 dark:bg-slate-800';
@@ -82,7 +82,7 @@ function ActivityItem({ item, isLast }: { item: ActivityEvent, isLast: boolean }
     }
 
     return (
-        <div className="relative flex gap-4 items-start group">
+        <div className="relative flex gap-4 items-start group cursor-pointer" onClick={onClick}>
             {/* Dot Node */}
             <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-slate-50/50 dark:border-slate-900/20 bg-white dark:bg-slate-950 shrink-0 relative z-10 mx-1.5 mt-0.5">
                 <div className={`flex items-center justify-center w-6 h-6 rounded-full ${iconBg}`}>

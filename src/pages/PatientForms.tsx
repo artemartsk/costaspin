@@ -5,6 +5,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { createClient } from '@supabase/supabase-js';
 import { Check, FileText, ShieldCheck, Mail } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import { format } from 'date-fns';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -116,6 +118,19 @@ export default function PatientFormsPage() {
         setError('');
 
         try {
+            // 1. Fetch IP Address
+            let ipAddress = 'Unknown';
+            try {
+                const ipRes = await fetch('https://api64.ipify.org?format=json');
+                const ipData = await ipRes.json();
+                ipAddress = ipData.ip;
+            } catch (e) {
+                console.warn('Could not fetch IP', e);
+            }
+
+            const userAgent = navigator.userAgent;
+            const signatureTimestamp = new Date();
+
             const formsToSubmit = FORMS.filter(f => agreed[f.id] && !completedForms.includes(f.id));
 
             for (const form of formsToSubmit) {
@@ -123,7 +138,7 @@ export default function PatientFormsPage() {
                     patient_id: patient.id,
                     form_type: form.id,
                     signature_data: fullName,
-                    form_data: { agreed: true, signed_name: fullName },
+                    form_data: { agreed: true, signed_name: fullName, ip_address: ipAddress },
                 });
             }
 
@@ -132,16 +147,163 @@ export default function PatientFormsPage() {
                 forms_completed: true,
                 marketing_consent: agreed['newsletter_consent'] || false,
                 medical_data_consent: agreed['medical_data_consent'] || false,
-                medical_consent_date: agreed['medical_data_consent'] ? new Date().toISOString() : null,
+                medical_consent_date: agreed['medical_data_consent'] ? signatureTimestamp.toISOString() : null,
                 data_processing_consent: agreed['data_processing'] || false,
-                data_processing_consent_date: agreed['data_processing'] ? new Date().toISOString() : null,
+                data_processing_consent_date: agreed['data_processing'] ? signatureTimestamp.toISOString() : null,
                 privacy_policy_version: '1.0',
                 updated_at: new Date().toISOString(),
             }).eq('id', patient.id);
 
+            // 2. Generate PDF Document
+            const doc = new jsPDF();
+            const marginX = 20;
+            let currentY = 20;
+
+            doc.setFillColor(30, 41, 59);
+            doc.rect(0, 0, 210, 40, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(24);
+            doc.text('COSTASPINE', marginX, 22);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(11);
+            doc.text('PATIENT MASTER CONSENT RECORD', marginX, 30);
+
+            doc.setFontSize(10);
+            doc.text(`Ref: CS-${patient.id.substring(0,8).toUpperCase()}`, 190, 22, { align: 'right' });
+            doc.text(`Date: ${format(signatureTimestamp, 'dd MMM yyyy')}`, 190, 30, { align: 'right' });
+
+            doc.setTextColor(30, 41, 59);
+            currentY = 55;
+
+            // Patient Info
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text('I. PATIENT IDENTIFICATION', marginX, currentY);
+            currentY += 5;
+            
+            doc.setDrawColor(226, 232, 240);
+            doc.setFillColor(248, 250, 252);
+            doc.roundedRect(marginX, currentY, 170, 25, 2, 2, 'FD');
+
+            currentY += 8;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.text('Full Name:', marginX + 5, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(patient.first_name + ' ' + patient.last_name, marginX + 35, currentY);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Patient ID:', 110, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${patient.id.substring(0,20)}...`, 135, currentY);
+
+            currentY += 10;
+            doc.setFont('helvetica', 'bold');
+            doc.text('Signed By:', marginX + 5, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(fullName, marginX + 35, currentY);
+
+            // Consents
+            currentY += 25;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text('II. LEGAL CONSENT & DECLARATIONS', marginX, currentY);
+            currentY += 5;
+
+            const addConsentBlock = (title: string, lawRef: string, statusText: string, dateText: string, yPos: number) => {
+                doc.setDrawColor(226, 232, 240);
+                doc.rect(marginX, yPos, 170, 22);
+                doc.setFillColor(241, 245, 249);
+                doc.rect(marginX, yPos, 170, 8, 'F');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text(title, marginX + 3, yPos + 6);
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(8);
+                doc.text(lawRef, marginX + 167, yPos + 6, { align: 'right' });
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.text('Status:', marginX + 3, yPos + 16);
+                doc.setTextColor(22, 163, 74);
+                doc.text(statusText, marginX + 18, yPos + 16);
+                doc.setTextColor(30, 41, 59);
+                doc.setFont('helvetica', 'normal');
+                doc.text(`Recorded: ${dateText}`, marginX + 167, yPos + 16, { align: 'right' });
+            };
+
+            const tStamp = format(signatureTimestamp, 'dd/MM/yyyy HH:mm');
+            addConsentBlock('Medical Information & Clinical Treatment', 'Ley 41/2002', 'SIGNED (INTAKE)', tStamp, currentY);
+            currentY += 28;
+            addConsentBlock('Personal Data Processing & Storage', 'RGPD / LOPDGDD', 'SIGNED (DIGITAL)', tStamp, currentY);
+            currentY += 28;
+            const mktStatus = agreed['newsletter_consent'] ? 'AGREED' : 'NOT AGREED';
+            addConsentBlock('Commercial & Marketing Communications', 'LSSI-CE', mktStatus, tStamp, currentY);
+
+            // Audit Trail
+            currentY += 40;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text('III. DIGITAL AUDIT TRAIL', marginX, currentY);
+            currentY += 5;
+
+            doc.setDrawColor(226, 232, 240);
+            doc.line(marginX, currentY, 190, currentY);
+            currentY += 8;
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.text(`This document serves as an immutable PDF extract from the CostaSpine DB.`, marginX, currentY);
+            currentY += 5;
+            doc.setFont('helvetica', 'bold');
+            doc.text(`Digitally signed by: `, marginX, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${fullName} on ${signatureTimestamp.toISOString()}`, marginX + 30, currentY);
+            currentY += 5;
+            doc.setFont('helvetica', 'bold');
+            doc.text(`Action logged from IP: `, marginX, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${ipAddress}`, marginX + 32, currentY);
+            currentY += 5;
+            doc.setFont('helvetica', 'bold');
+            doc.text(`User Agent: `, marginX, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${userAgent.substring(0, 80)}...`, marginX + 18, currentY);
+
+            doc.setTextColor(150, 150, 150);
+            doc.text(`CostaSpine Clinics • Urb. Elviria, Marbella 29604, Spain • +34 952 123 456`, 105, 285, { align: 'center' });
+
+            // 3. Upload to Supabase Storage
+            const pdfBlob = doc.output('blob');
+            const fileName = `${patient.id}/master_consent_${signatureTimestamp.getTime()}.pdf`;
+            
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('patient_documents')
+                .upload(fileName, pdfBlob, {
+                    contentType: 'application/pdf',
+                    cacheControl: '31536000',
+                    upsert: false
+                });
+
+            if (uploadError) {
+                console.error("Failed to upload PDF:", uploadError);
+            } else if (uploadData) {
+                // 4. Save reference in DB
+                const filePath = uploadData.path;
+                
+                await supabase.from('patient_documents').insert({
+                    patient_id: patient.id,
+                    type: 'consent',
+                    signed_at: signatureTimestamp.toISOString(),
+                    pdf_url: filePath,
+                    ip_address: ipAddress,
+                    data: { userAgent, agreed_forms: Object.keys(agreed).filter(k => agreed[k]), signed_name: fullName }
+                });
+            }
+
             setDone(true);
-        } catch {
-            setError('Failed to submit forms. Please try again.');
+        } catch (err: any) {
+            setError(err.message || 'Failed to submit forms. Please try again.');
         } finally {
             setSubmitting(false);
         }

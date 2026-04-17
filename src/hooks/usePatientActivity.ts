@@ -29,13 +29,13 @@ export function usePatientActivity(patientId: string) {
                 supabase!.from('appointments').select(`
                     *,
                     service:service_id (name)
-                `).eq('patient_id', patientId),
+                `).eq('patient_id', patientId).order('created_at', { ascending: false }).limit(50),
                 supabase!.from('clinical_notes').select(`
                     *,
                     practitioner:practitioner_id (first_name, last_name)
-                `).eq('patient_id', patientId),
-                supabase!.from('call_logs').select('*').eq('patient_id', patientId),
-                supabase!.from('whatsapp_threads').select('*').eq('patient_id', patientId),
+                `).eq('patient_id', patientId).order('created_at', { ascending: false }).limit(50),
+                supabase!.from('call_logs').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(50),
+                supabase!.from('whatsapp_threads').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(50),
             ]);
 
             const events: ActivityEvent[] = [];
@@ -102,7 +102,7 @@ export function usePatientActivity(patientId: string) {
                         description: call.status === 'completed' && call.duration_seconds 
                             ? `${Math.round(call.duration_seconds/60)} min duration`
                             : call.status,
-                        metadata: { recording_url: call.recording_url }
+                        metadata: { recording_url: call.recording_url, raw_data: call }
                     });
                 });
             }
@@ -115,7 +115,8 @@ export function usePatientActivity(patientId: string) {
                         type: 'whatsapp',
                         date: new Date(thread.created_at),
                         title: `WhatsApp Thread Started`,
-                        description: thread.status
+                        description: thread.status,
+                        metadata: { raw_data: thread }
                     });
                 });
             }
